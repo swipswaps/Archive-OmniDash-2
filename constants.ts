@@ -12,4 +12,5 @@ export const DEFAULT_SETTINGS = {
   accessKey: '',
   secretKey: '',
   demoMode: false,
+  corsProxy: '',
 };

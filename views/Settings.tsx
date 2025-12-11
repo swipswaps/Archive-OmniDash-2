@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AppSettings } from '../types';
 import { Button } from '../components/ui/Button';
-import { ExternalLink, CheckCircle, Save, Shield, TestTube2 } from 'lucide-react';
+import { ExternalLink, CheckCircle, Save, Shield, TestTube2, Globe2, AlertCircle } from 'lucide-react';
 
 interface Props {
   settings: AppSettings;
@@ -50,7 +50,7 @@ const Settings: React.FC<Props> = ({ settings, onUpdate }) => {
                         Demo Mode
                      </h3>
                      <p className="text-sm text-gray-400 mt-1">
-                         Enable mock data to test the UI without making real API calls. Useful if CORS or rate-limits are blocking you.
+                         Enable mock data to test the UI without making real API calls. Useful if APIs are blocked.
                      </p>
                  </div>
                  <div className="flex items-center">
@@ -64,23 +64,57 @@ const Settings: React.FC<Props> = ({ settings, onUpdate }) => {
              </div>
          </div>
 
+         {/* Connectivity / CORS Section */}
+         <div className="p-6 border-b border-gray-700">
+             <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
+                <Globe2 className="w-5 h-5 text-indigo-400" />
+                Connectivity
+             </h3>
+             <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-4 mb-4">
+                 <div className="flex gap-3">
+                     <AlertCircle className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
+                     <div className="text-sm text-indigo-200">
+                         <strong className="text-indigo-100">Search failing?</strong> Internet Archive APIs block direct browser requests (CORS). 
+                         To fix this, use a proxy.
+                         <div className="mt-2 text-indigo-300">
+                             Try public proxy: <code className="bg-indigo-900/50 px-1 py-0.5 rounded text-indigo-100">https://cors-anywhere.herokuapp.com/</code>
+                             <br/>
+                             <span className="text-xs opacity-70">(Or run your own local-cors-proxy)</span>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+             
+             <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">CORS Proxy URL Prefix</label>
+                <input 
+                    type="text" 
+                    value={localSettings.corsProxy || ''}
+                    onChange={(e) => handleChange('corsProxy', e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder-gray-600 font-mono"
+                    placeholder="e.g. https://cors-anywhere.herokuapp.com/"
+                />
+            </div>
+         </div>
+
+         {/* API Credentials Section */}
          <div className="p-6 border-b border-gray-700">
             <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
                 API Credentials
-                <span className="text-xs font-normal text-gray-500 bg-gray-900 px-2 py-0.5 rounded border border-gray-700">Required for Write Ops</span>
+                <span className="text-xs font-normal text-gray-500 bg-gray-900 px-2 py-0.5 rounded border border-gray-700">Optional (Write Access)</span>
             </h3>
             
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-200 mb-2">
-                    To use features like <strong>SavePageNow</strong>, you need an S3 Access Key and Secret Key.
+            <div className="bg-gray-900/50 rounded-lg p-4 mb-6 border border-gray-700/50">
+                <p className="text-sm text-gray-400 mb-2">
+                    Required only for <strong>SavePageNow</strong> operations.
                 </p>
                 <a 
                     href="https://archive.org/account/s3.php" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-sm font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 hover:underline w-fit"
+                    className="text-sm font-medium text-teal-400 hover:text-teal-300 flex items-center gap-1 hover:underline w-fit"
                 >
-                    Get your keys from archive.org/account/s3.php <ExternalLink className="w-3 h-3" />
+                    Get S3 Keys <ExternalLink className="w-3 h-3" />
                 </a>
             </div>
 
@@ -126,14 +160,15 @@ const Settings: React.FC<Props> = ({ settings, onUpdate }) => {
                 </Button>
             </div>
          </div>
+         
          <div className="bg-gray-900/50 p-4 flex items-center justify-between">
             <span className="text-xs text-gray-500 flex items-center gap-2">
                 <Shield className="w-3 h-3" />
-                Keys are stored securely in your browser's local storage.
+                Keys are stored locally.
             </span>
             {isValid && !hasChanges && (
                 <span className="text-xs text-green-500 font-medium flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]"></div> Active
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]"></div> Creds Active
                 </span>
             )}
          </div>

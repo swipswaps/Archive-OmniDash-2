@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Download, ExternalLink, Loader2, Info, RefreshCw, AlertTriangle, Lightbulb, Globe, TestTube2 } from 'lucide-react';
+import { Search, Download, ExternalLink, Loader2, Info, RefreshCw, AlertTriangle, Lightbulb, Globe, TestTube2, Settings as SettingsIcon } from 'lucide-react';
 import { searchItems } from '../services/iaService';
 import { IASearchResult, AppSettings, AppView } from '../types';
 import { Button } from '../components/ui/Button';
@@ -159,15 +159,31 @@ const ScrapingBrowser: React.FC<Props> = ({ settings, initialQuery, onClearQuery
             className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar"
         >
             {error && (
-                <div className="flex flex-col items-center justify-center h-64 text-center px-4 animate-in fade-in">
+                <div className="flex flex-col items-center justify-center h-full text-center px-4 animate-in fade-in">
                     <div className="bg-red-500/10 p-4 rounded-full mb-4">
                         <AlertTriangle className="w-10 h-10 text-red-400" />
                     </div>
                     <h3 className="text-lg font-bold text-white mb-2">Search Connection Failed</h3>
-                    <p className="text-sm text-gray-400 max-w-md mb-6">
-                        {error} <br/> 
-                        The Internet Archive API often blocks direct requests from browsers (CORS).
+                    <p className="text-sm text-gray-300 max-w-md mb-6 leading-relaxed">
+                        The Internet Archive API often blocks direct browser requests (CORS).<br/>
+                        <span className="text-gray-500">Error: {error}</span>
                     </p>
+                    <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-700/50 max-w-lg mb-6 text-sm text-left">
+                        <h4 className="font-bold text-indigo-400 mb-2 flex items-center gap-2">
+                            <Lightbulb className="w-4 h-4" /> Recommended Solution
+                        </h4>
+                        <p className="text-gray-400 mb-2">
+                            Go to <strong>Settings</strong> and set a <strong>CORS Proxy</strong> (e.g. <code>https://cors-anywhere.herokuapp.com/</code>).
+                        </p>
+                        <Button 
+                            variant="secondary" 
+                            className="w-full mt-2 text-xs h-8" 
+                            onClick={() => onChangeView && onChangeView(AppView.SETTINGS)}
+                        >
+                            <SettingsIcon className="w-3 h-3 mr-1" /> Open Settings
+                        </Button>
+                    </div>
+
                     <div className="flex gap-4">
                         <Button variant="secondary" onClick={() => performSearch(query, true, mode)}>Retry</Button>
                         <Button variant="primary" onClick={enableDemoMode} className="bg-yellow-600 hover:bg-yellow-500 text-white">
@@ -195,13 +211,12 @@ const ScrapingBrowser: React.FC<Props> = ({ settings, initialQuery, onClearQuery
                                  <p className="text-xs opacity-80 mt-1 mb-2">
                                      This search tool looks for <i>Item Metadata</i> (books, movies, etc). For website history, you need the Wayback Machine.
                                  </p>
-                                 <a href="#" className="underline font-bold" onClick={(e) => {
+                                 <button className="underline font-bold" onClick={(e) => {
                                      e.preventDefault();
-                                     // This requires passing the view handler or just instructing them
-                                     // For now we assume they can click the sidebar, but let's be helpful if we can
+                                     if (onChangeView) onChangeView(AppView.WAYBACK);
                                  }}>
                                     Use the Wayback Machine Tool
-                                 </a>
+                                 </button>
                              </div>
                         </div>
                     )}

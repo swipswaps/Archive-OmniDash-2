@@ -42,15 +42,22 @@ export const getMockAvailability = (url: string): WaybackAvailability => ({
 });
 
 export const getMockCDX = (url: string): CDXRecord[] => {
-  return Array.from({ length: 15 }).map((_, i) => ({
-    urlkey: url,
-    timestamp: `2023${(i % 12 + 1).toString().padStart(2, '0')}01120000`,
-    original: url,
-    mimetype: "text/html",
-    statuscode: "200",
-    digest: "3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
-    length: "1234"
-  }));
+  // Generate a spread of data over several years for the chart
+  const baseYear = 2010;
+  return Array.from({ length: 200 }).map((_, i) => {
+    const year = baseYear + Math.floor(i / 15); // Change year every 15 items
+    const month = (i % 12) + 1;
+    const timestamp = `${year}${month.toString().padStart(2, '0')}01120000`;
+    return {
+      urlkey: url,
+      timestamp: timestamp,
+      original: url,
+      mimetype: "text/html",
+      statuscode: i % 10 === 0 ? "404" : "200",
+      digest: "3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
+      length: "1234"
+    };
+  });
 };
 
 export const getMockViews = (): Record<string, number> => {

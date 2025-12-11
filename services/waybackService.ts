@@ -2,14 +2,21 @@ import { API_BASE } from '../constants';
 import { WaybackAvailability, CDXRecord } from '../types';
 import { getMockAvailability, getMockCDX } from './mockService';
 
-const isDemoMode = () => {
+const getSettings = () => {
   try {
     const settings = localStorage.getItem('omnidash_settings');
-    if (settings) {
-      return JSON.parse(settings).demoMode;
-    }
-  } catch(e) { return false; }
-  return false;
+    return settings ? JSON.parse(settings) : {};
+  } catch(e) { return {}; }
+};
+
+const isDemoMode = () => !!getSettings().demoMode;
+
+const getProxiedUrl = (url: string) => {
+  const { corsProxy } = getSettings();
+  if (corsProxy && corsProxy.trim().length > 0) {
+      return `${corsProxy}${url}`;
+  }
+  return url;
 };
 
 export const checkAvailability = async (url: string): Promise<WaybackAvailability> => {
@@ -18,25 +25,28 @@ export const checkAvailability = async (url: string): Promise<WaybackAvailabilit
   }
 
   try {
-    const res = await fetch(`${API_BASE.WAYBACK_AVAILABLE}?url=${encodeURIComponent(url)}`);
+    const target = `${API_BASE.WAYBACK_AVAILABLE}?url=${encodeURIComponent(url)}`;
+    const res = await fetch(getProxiedUrl(target));
     if (!res.ok) {
         throw new Error(`Availability check failed with status: ${res.status}`);
     }
     return await res.json();
   } catch (error) {
     console.error("Availability Check Error (Falling back to mock):", error);
+    // Explicitly notify in console that we are mocking due to error
+    console.warn("Returning MOCK data because the live API call failed. Check your CORS Proxy settings.");
     return getMockAvailability(url);
   }
 };
 
-export const fetchCDX = async (url: string): Promise<CDXRecord[]> => {
+export const fetchCDX = async (url: string, limit: number = 3000): Promise<CDXRecord[]> => {
   if (isDemoMode()) {
       return new Promise(resolve => setTimeout(() => resolve(getMockCDX(url)), 800));
   }
 
   try {
-    const api = `${API_BASE.CDX}?url=${encodeURIComponent(url)}&output=json&limit=100&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
-    const res = await fetch(api);
+    const api = `${API_BASE.CDX}?url=${encodeURIComponent(url)}&output=json&limit=${limit}&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
+    const res = await fetch(getProxiedUrl(api));
     if (!res.ok) {
         throw new Error(`CDX fetch failed with status: ${res.status}`);
     }
@@ -77,7 +87,11 @@ export const savePageNow = async (url: string, accessKey: string, secretKey: str
   }
 
   try {
-    const res = await fetch(API_BASE.WAYBACK_SAVE, {
+    // Note: SavePageNow is a POST request. Proxies often handle POST, but some simple ones might not.
+    // We attempt to use the proxy here as well.
+    const target = API_BASE.WAYBACK_SAVE;
+    
+    const res = await fetch(getProxiedUrl(target), {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -92,7 +106,7 @@ export const savePageNow = async (url: string, accessKey: string, secretKey: str
     } else {
        const text = await res.text();
        if (text.includes('<!DOCTYPE html>')) {
-           throw new Error(`Capture failed (Status ${res.status}). This may be due to rate limits or CORS issues when running client-side.`);
+           throw new Error(`Capture failed (Status ${res.status}). CORS Proxy may be required.`);
        }
        throw new Error(text || `Capture failed with status ${res.status}`);
     }

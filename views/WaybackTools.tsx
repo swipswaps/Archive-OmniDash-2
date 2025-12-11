@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Globe, Camera, Calendar, CheckCircle, XCircle, AlertTriangle, ExternalLink, Loader2, Trash2, Search, BarChart3, Clock, X } from 'lucide-react';
+import { Globe, Camera, Calendar, CheckCircle, XCircle, AlertTriangle, ExternalLink, Loader2, Trash2, Search, BarChart3, Clock, X, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { checkAvailability, savePageNow, fetchCDX } from '../services/waybackService';
 import { AppSettings, WaybackAvailability, CDXRecord } from '../types';
@@ -26,16 +26,20 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
   const [cdxData, setCdxData] = useState<CDXRecord[]>([]);
   const [saveHistory, setSaveHistory] = useState<SaveRequestItem[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleAction = async (e?: React.FormEvent) => {
+  const handleAction = async (e?: React.FormEvent, overrideMode?: 'available' | 'save' | 'cdx') => {
     if (e) e.preventDefault();
     setError(null);
+
+    const activeMode = overrideMode || mode;
+    if (overrideMode) setMode(overrideMode);
 
     // Basic URL cleanup
     let targetUrl = url.trim();
     if (!targetUrl) {
-        // If empty, just focus the input
         inputRef.current?.focus();
         return;
     }
@@ -43,23 +47,22 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
     // Auto-prepend http if missing (heuristic)
     if (!targetUrl.startsWith('http') && targetUrl.includes('.')) {
         targetUrl = 'http://' + targetUrl;
-        // Don't update state immediately to avoid jumping cursor while typing if this was onBlur, 
-        // but here it's submit, so it's fine.
         setUrl(targetUrl); 
     }
 
     setLoading(true);
     setHasSearched(false);
+    setSelectedYear(null);
 
     // Reset data for the current mode to show fresh loading state
-    if (mode === 'available') setAvailability(null);
-    if (mode === 'cdx') setCdxData([]);
+    if (activeMode === 'available') setAvailability(null);
+    if (activeMode === 'cdx') setCdxData([]);
 
     try {
-        if (mode === 'available') {
+        if (activeMode === 'available') {
             const res = await checkAvailability(targetUrl);
             setAvailability(res);
-        } else if (mode === 'save') {
+        } else if (activeMode === 'save') {
             const newItem: SaveRequestItem = {
                 id: Date.now().toString(),
                 url: targetUrl,
@@ -82,13 +85,14 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
                     : item
                 ));
             }
-        } else if (mode === 'cdx') {
-            const res = await fetchCDX(targetUrl);
+        } else if (activeMode === 'cdx') {
+            // Fetch more items for better browsing (3000)
+            const res = await fetchCDX(targetUrl, 3000);
             setCdxData(res);
         }
     } catch (e: any) {
         console.error("Wayback Tool Error:", e);
-        if (mode !== 'save') {
+        if (activeMode !== 'save') {
              let msg = e.message || "An unexpected error occurred.";
              if (e.message.includes('Failed to fetch')) {
                  msg = "Network Error: Could not reach Archive.org. Try enabling Demo Mode in Settings if this persists.";
@@ -112,6 +116,11 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
       return Object.entries(years)
         .map(([year, count]) => ({ year, count }))
         .sort((a, b) => a.year.localeCompare(b.year));
+  };
+
+  const getFilteredCDXData = () => {
+      if (!selectedYear) return cdxData;
+      return cdxData.filter(row => row.timestamp.startsWith(selectedYear));
   };
 
   const formatTimestamp = (ts: string) => {
@@ -151,7 +160,6 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
             <form onSubmit={handleAction} className="relative z-10">
                  <div className="relative flex gap-4">
                     <div className="relative flex-1 group">
-                        {/* Pointer events none ensures clicks pass through to input if user misses the text */}
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none group-focus-within:text-indigo-400 transition-colors" />
                         
                         <input
@@ -222,7 +230,6 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
       {/* Results Area */}
       <div className="flex-1 bg-gray-800 rounded-2xl border border-gray-700 shadow-lg min-h-[400px] overflow-hidden flex flex-col p-6 relative">
         
-        {/* Helper Instructions when empty */}
         {!loading && !error && !hasResults() && !hasSearched && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600 space-y-6 pointer-events-none opacity-50 select-none">
                 {mode === 'available' && <Search className="w-20 h-20" />}
@@ -236,7 +243,6 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
             </div>
         )}
 
-        {/* Loading Overlay */}
         {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 z-20 backdrop-blur-sm">
                 <Loader2 className="w-12 h-12 text-teal-500 animate-spin mb-4" />
@@ -244,7 +250,6 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
             </div>
         )}
 
-        {/* Error Message */}
         {error && (
             <div className="w-full max-w-lg mx-auto mt-8 p-6 bg-red-500/10 border border-red-500/20 rounded-xl text-center animate-in fade-in slide-in-from-bottom-2">
                 <div className="bg-red-500/20 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -256,7 +261,6 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
             </div>
         )}
 
-        {/* No Results found */}
         {!loading && !error && !hasResults() && hasSearched && (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2 m-auto animate-in fade-in">
                 <p className="text-lg font-medium text-gray-300">No snapshots found</p>
@@ -264,9 +268,9 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
             </div>
         )}
 
-        {/* Content: Availability View */}
         {mode === 'available' && availability && !loading && (
-            <div className="flex-1 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex-1 w-full overflow-y-auto custom-scrollbar -m-6 p-6">
+                <div className="min-h-full flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300">
                 <div className={`w-full max-w-2xl p-8 rounded-3xl border-2 flex flex-col items-center text-center space-y-6 ${availability.archived_snapshots.closest?.available ? 'bg-green-500/5 border-green-500/20 shadow-[0_0_30px_rgba(34,197,94,0.1)]' : 'bg-red-500/5 border-red-500/20'}`}>
                      {availability.archived_snapshots.closest?.available ? (
                             <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mb-2 ring-4 ring-green-500/10">
@@ -290,33 +294,43 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
                     </div>
 
                     {availability.archived_snapshots.closest && (
-                        <div className="w-full bg-gray-900/50 p-6 rounded-2xl border border-gray-700/50 flex flex-col gap-4">
-                            <div className="flex justify-between items-center border-b border-gray-700/50 pb-4">
-                                <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Latest Timestamp</span>
-                                <span className="font-mono text-lg text-teal-400 font-bold tracking-wide">
-                                    {formatTimestamp(availability.archived_snapshots.closest.timestamp)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Original URL</span>
-                                <span className="text-sm text-gray-400 truncate max-w-[250px]" title={availability.url}>{availability.url}</span>
+                        <div className="w-full flex flex-col gap-4">
+                            <div className="bg-gray-900/50 p-6 rounded-2xl border border-gray-700/50 flex flex-col gap-4">
+                                <div className="flex justify-between items-center border-b border-gray-700/50 pb-4">
+                                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Latest Timestamp</span>
+                                    <span className="font-mono text-lg text-teal-400 font-bold tracking-wide">
+                                        {formatTimestamp(availability.archived_snapshots.closest.timestamp)}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Original URL</span>
+                                    <span className="text-sm text-gray-400 truncate max-w-[250px]" title={availability.url}>{availability.url}</span>
+                                </div>
+                                
+                                <a 
+                                    href={availability.archived_snapshots.closest.url} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="mt-2 flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-teal-500/25"
+                                >
+                                    Open in Wayback Machine <ExternalLink className="w-4 h-4" />
+                                </a>
                             </div>
                             
-                            <a 
-                                href={availability.archived_snapshots.closest.url} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                className="mt-2 flex items-center justify-center gap-2 bg-teal-500 hover:bg-teal-400 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg hover:shadow-teal-500/25"
+                            <Button 
+                                variant="secondary" 
+                                onClick={() => handleAction(undefined, 'cdx')}
+                                className="w-full py-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 text-gray-300"
                             >
-                                Open in Wayback Machine <ExternalLink className="w-4 h-4" />
-                            </a>
+                                <BarChart3 className="w-4 h-4 mr-2" /> View Full Capture History
+                            </Button>
                         </div>
                     )}
+                </div>
                 </div>
             </div>
         )}
 
-        {/* Content: Save Page Now */}
         {mode === 'save' && saveHistory.length > 0 && (
             <div className="flex flex-col h-full animate-in fade-in duration-300">
                  <div className="flex justify-between items-center mb-4">
@@ -358,32 +372,63 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
             </div>
         )}
 
-        {/* Content: CDX History */}
         {mode === 'cdx' && cdxData.length > 0 && !loading && (
             <div className="flex flex-col h-full animate-in fade-in duration-300 gap-6">
                  {/* Chart Section */}
-                 <div className="h-48 bg-gray-900/50 rounded-xl border border-gray-700/50 p-4">
-                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Capture Timeline</h3>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={getTimelineData()}>
-                            <Tooltip 
-                                cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                                contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#f3f4f6' }}
-                            />
-                            <XAxis dataKey="year" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
-                            <Bar dataKey="count" fill="#f97316" radius={[4, 4, 0, 0]}>
-                                {getTimelineData().map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.count > 5 ? '#f97316' : '#fdba74'} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+                 <div className="h-48 bg-gray-900/50 rounded-xl border border-gray-700/50 p-4 shrink-0 flex flex-col">
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Capture Timeline</h3>
+                        <div className="text-xs text-gray-400 flex items-center gap-2">
+                            <span>Click a bar to filter</span>
+                            {selectedYear && (
+                                <button 
+                                    onClick={() => setSelectedYear(null)} 
+                                    className="flex items-center gap-1 bg-teal-500/20 text-teal-400 px-2 py-0.5 rounded-full hover:bg-teal-500/30 transition-colors"
+                                >
+                                    Filter: {selectedYear} <X className="w-3 h-3" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex-1 min-h-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart 
+                                data={getTimelineData()}
+                                onClick={(data) => {
+                                    if (data && data.activeLabel) {
+                                        setSelectedYear(data.activeLabel);
+                                    }
+                                }}
+                                className="cursor-pointer"
+                            >
+                                <Tooltip 
+                                    cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                    contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#f3f4f6' }}
+                                />
+                                <XAxis dataKey="year" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
+                                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                                    {getTimelineData().map((entry, index) => (
+                                        <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={entry.year === selectedYear ? '#14b8a6' : (entry.count > 5 ? '#f97316' : '#fdba74')} 
+                                            className="transition-all duration-300 hover:opacity-80"
+                                        />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                  </div>
 
                  <div className="flex-1 flex flex-col min-h-0">
                     <div className="flex justify-between items-center mb-3 px-1">
-                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Raw Capture List</h3>
-                        <span className="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">{cdxData.length} records</span>
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                            {selectedYear ? `Snapshots from ${selectedYear}` : 'All Recent Snapshots'}
+                            {selectedYear && <Filter className="w-3 h-3 text-teal-500" />}
+                        </h3>
+                        <span className="text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">
+                            {getFilteredCDXData().length} of {cdxData.length} loaded
+                        </span>
                     </div>
                     
                     <div className="flex-1 overflow-auto bg-gray-900 rounded-xl border border-gray-700 shadow-inner custom-scrollbar">
@@ -397,7 +442,7 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                {cdxData.map((row, i) => (
+                                {getFilteredCDXData().length > 0 ? getFilteredCDXData().map((row, i) => (
                                     <tr key={i} className="hover:bg-gray-800 transition-colors">
                                         <td className="px-5 py-3 font-mono text-gray-300 whitespace-nowrap">
                                             {formatTimestamp(row.timestamp)}
@@ -419,7 +464,13 @@ const WaybackTools: React.FC<Props> = ({ settings }) => {
                                             </a>
                                         </td>
                                     </tr>
-                                ))}
+                                )) : (
+                                    <tr>
+                                        <td colSpan={4} className="px-5 py-8 text-center text-gray-500">
+                                            No snapshots found for the selected filter.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>

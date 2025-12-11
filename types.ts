@@ -57,6 +57,7 @@ export interface AppSettings {
   accessKey: string;
   secretKey: string;
   demoMode: boolean;
+  corsProxy?: string;
 }
 
 export enum AppView {

@@ -2,14 +2,21 @@ import { API_BASE } from '../constants';
 import { IAMetadata, IASearchResult, ViewCountData } from '../types';
 import { getMockMetadata, getMockSearchResults, getMockViews } from './mockService';
 
-const isDemoMode = () => {
+const getSettings = () => {
   try {
     const settings = localStorage.getItem('omnidash_settings');
-    if (settings) {
-      return JSON.parse(settings).demoMode;
-    }
-  } catch(e) { return false; }
-  return false;
+    return settings ? JSON.parse(settings) : {};
+  } catch(e) { return {}; }
+};
+
+const isDemoMode = () => !!getSettings().demoMode;
+
+const getProxiedUrl = (url: string) => {
+  const { corsProxy } = getSettings();
+  if (corsProxy && corsProxy.trim().length > 0) {
+      return `${corsProxy}${url}`;
+  }
+  return url;
 };
 
 export const fetchMetadata = async (identifier: string): Promise<IAMetadata> => {
@@ -17,7 +24,7 @@ export const fetchMetadata = async (identifier: string): Promise<IAMetadata> => 
     return new Promise(resolve => setTimeout(() => resolve(getMockMetadata(identifier)), 600));
   }
 
-  const res = await fetch(`${API_BASE.METADATA}/${identifier}`);
+  const res = await fetch(getProxiedUrl(`${API_BASE.METADATA}/${identifier}`));
   if (!res.ok) throw new Error(`Metadata fetch failed: ${res.statusText}`);
   return await res.json();
 };
@@ -93,7 +100,8 @@ const executeAdvancedSearch = async (query: string, page: number): Promise<Searc
       url.searchParams.append('sort[]', 'downloads desc');
   }
 
-  const res = await fetch(url.toString());
+  // Use proxy helper
+  const res = await fetch(getProxiedUrl(url.toString()));
   if (!res.ok) {
       const text = await res.text();
       // Solr errors are often HTML, we want a clean message
@@ -121,7 +129,7 @@ const executeScrapeSearch = async (query: string, cursor: string | null): Promis
   url.searchParams.append('sort', 'downloads desc'); 
   if (cursor) url.searchParams.append('cursor', cursor);
 
-  const res = await fetch(url.toString());
+  const res = await fetch(getProxiedUrl(url.toString()));
   if (!res.ok) throw new Error(`V1 API returned ${res.status}`);
   
   const data = await res.json();
@@ -137,7 +145,7 @@ export const fetchViews = async (identifier: string): Promise<ViewCountData> => 
     return new Promise(resolve => setTimeout(() => resolve(getMockViews()), 500));
   }
 
-  const res = await fetch(`${API_BASE.VIEWS}/${identifier}`);
+  const res = await fetch(getProxiedUrl(`${API_BASE.VIEWS}/${identifier}`));
   if (!res.ok) throw new Error(`Views fetch failed`);
   return await res.json();
 };
