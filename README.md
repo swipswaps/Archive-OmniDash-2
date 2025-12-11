@@ -49,6 +49,9 @@ A comprehensive React-based dashboard for interacting with various Internet Arch
    ```bash
    npm start
    ```
+   *Alternatively, you can run `npm run dev`*
+
+4. Open your browser to `http://localhost:3000` (or the port shown in the terminal).
 
 ## User Guide
 
