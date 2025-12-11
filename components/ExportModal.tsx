@@ -251,12 +251,12 @@ ${item.page_content.substring(0, 1000)}${item.page_content.length > 1000 ? '...'
         {/* Content Area */}
         <div className="flex-1 p-0 overflow-hidden relative bg-gray-950">
           {format === 'xlsx' ? (
-             <div className="w-full h-full overflow-auto p-6 bg-gray-100 text-gray-900">
+             <div className="w-full h-full overflow-auto p-0 bg-white text-gray-900">
                  {/* XLSX Preview Styling */}
                  <style>{`
-                    table { border-collapse: collapse; width: 100%; font-size: 12px; font-family: sans-serif; }
-                    th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                    th { background-color: #f3f4f6; font-weight: bold; }
+                    table { border-collapse: collapse; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+                    th, td { border: 1px solid #d1d5db; padding: 3px 6px; text-align: left; max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top; }
+                    th { background-color: #f3f4f6; font-weight: 600; color: #374151; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 0 #d1d5db; }
                  `}</style>
                  <div dangerouslySetInnerHTML={{ __html: xlsxPreview }} />
              </div>
