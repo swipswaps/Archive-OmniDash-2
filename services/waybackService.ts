@@ -24,13 +24,57 @@ export const checkAvailability = async (url: string): Promise<WaybackAvailabilit
      return new Promise(resolve => setTimeout(() => resolve(getMockAvailability(url)), 700));
   }
 
+  // Helper to construct response from CDX data
+  const createFromCDX = (cdxRow: any[]): WaybackAvailability => {
+      const timestamp = cdxRow[1];
+      const original = cdxRow[2];
+      const status = cdxRow[4];
+      return {
+          url: url,
+          archived_snapshots: {
+              closest: {
+                  available: true,
+                  status: status,
+                  timestamp: timestamp,
+                  url: `http://web.archive.org/web/${timestamp}/${original}`
+              }
+          }
+      };
+  };
+
   try {
+    // 1. Try standard Availability API
     const target = `${API_BASE.WAYBACK_AVAILABLE}?url=${encodeURIComponent(url)}`;
     const res = await fetch(getProxiedUrl(target));
-    if (!res.ok) {
-        throw new Error(`Availability check failed with status: ${res.status}`);
+    
+    if (res.ok) {
+        const data = await res.json();
+        // If successful and has data, return it
+        if (data && data.archived_snapshots && data.archived_snapshots.closest) {
+            return data;
+        }
     }
-    return await res.json();
+    
+    // 2. Fallback: If Availability API failed or returned empty, try CDX "Last 1" strategy
+    // limit=-1 fetches the most recent capture
+    console.log("Standard availability check empty/failed, falling back to CDX...");
+    const cdxUrl = `${API_BASE.CDX}?url=${encodeURIComponent(url)}&output=json&limit=-1&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
+    const cdxRes = await fetch(getProxiedUrl(cdxUrl));
+
+    if (cdxRes.ok) {
+        const cdxJson = await cdxRes.json();
+        // CDX JSON is [[headers], [data]]
+        if (Array.isArray(cdxJson) && cdxJson.length > 1) {
+            return createFromCDX(cdxJson[1]);
+        }
+    }
+
+    // If both failed to find data, return empty state
+    return {
+        url,
+        archived_snapshots: {}
+    };
+
   } catch (error) {
     console.error("Availability Check Error (Falling back to mock):", error);
     // Explicitly notify in console that we are mocking due to error
@@ -45,7 +89,11 @@ export const fetchCDX = async (url: string, limit: number = 3000): Promise<CDXRe
   }
 
   try {
-    const api = `${API_BASE.CDX}?url=${encodeURIComponent(url)}&output=json&limit=${limit}&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
+    // Basic clean of URL for CDX to ensure we hit the index
+    // CDX is fussy about protocols sometimes, but usually passing the full URL is best.
+    const encodedUrl = encodeURIComponent(url);
+    const api = `${API_BASE.CDX}?url=${encodedUrl}&output=json&limit=${limit}&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
+    
     const res = await fetch(getProxiedUrl(api));
     if (!res.ok) {
         throw new Error(`CDX fetch failed with status: ${res.status}`);
