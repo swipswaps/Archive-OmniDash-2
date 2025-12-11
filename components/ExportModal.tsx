@@ -212,7 +212,7 @@ ${item.page_content.substring(0, 500)}${item.page_content.length > 500 ? '...' :
                  <style>{`
                     table { border-collapse: collapse; width: 100%; font-size: 12px; font-family: sans-serif; }
                     th, td { border: 1px solid #d1d5db; padding: 6px; text-align: left; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                    th { bg-color: #f3f4f6; font-weight: bold; }
+                    th { background-color: #f3f4f6; font-weight: bold; }
                  `}</style>
                  <div dangerouslySetInnerHTML={{ __html: xlsxPreview }} />
              </div>
