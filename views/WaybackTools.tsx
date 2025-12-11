@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Globe, Camera, Calendar, CheckCircle, XCircle, AlertTriangle, ExternalLink, Loader2, Trash2, Search, BarChart3, Clock, X, Filter, Download, Database, Play, Settings as SettingsIcon, FileDown, Eye, Maximize2, Minimize2 } from 'lucide-react';
+import { Globe, Camera, Calendar, CheckCircle, XCircle, AlertTriangle, ExternalLink, Loader2, Trash2, Search, BarChart3, Clock, X, Filter, Download, Database, Play, Settings as SettingsIcon, FileDown, Eye, Maximize2, Minimize2, Upload } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { checkAvailability, savePageNow, fetchCDX, downloadSnapshotContent } from '../services/waybackService';
 import { storageService } from '../services/storageService';
 import { AppSettings, WaybackAvailability, CDXRecord, SavedSnapshot, AppView } from '../types';
 import { Button } from '../components/ui/Button';
+import ExportModal from '../components/ExportModal';
 
 interface Props {
   settings: AppSettings;
@@ -32,8 +33,9 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   
-  // Preview Modal State
+  // Modal States
   const [previewSnapshot, setPreviewSnapshot] = useState<SavedSnapshot | null>(null);
+  const [isExportOpen, setIsExportOpen] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -696,6 +698,14 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
             <div className="flex flex-col h-full animate-in fade-in duration-300">
                 <div className="flex justify-between items-center mb-4">
                      <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Local Database ({savedSnapshots.length})</h3>
+                     {savedSnapshots.length > 0 && (
+                         <Button 
+                             onClick={() => setIsExportOpen(true)}
+                             className="text-xs h-8 bg-teal-600 hover:bg-teal-500"
+                         >
+                             <Upload className="w-3 h-3 mr-2" /> Export Data
+                         </Button>
+                     )}
                 </div>
 
                 <div className="flex-1 overflow-auto bg-gray-900 rounded-xl border border-gray-700 shadow-inner custom-scrollbar">
@@ -804,6 +814,13 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
               </div>
           </div>
       )}
+      
+      {/* Export Modal */}
+      <ExportModal 
+        isOpen={isExportOpen} 
+        onClose={() => setIsExportOpen(false)} 
+        data={savedSnapshots} 
+      />
     </div>
   );
 };
