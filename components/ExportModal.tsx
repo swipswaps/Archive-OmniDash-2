@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Copy, Check, FileText, Table, FileJson, Database, FileSpreadsheet, X } from 'lucide-react';
+import { Download, Copy, Check, FileText, Table, FileJson, Database, FileSpreadsheet, X, Wand2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { SavedSnapshot } from '../types';
 import { Button } from './ui/Button';
@@ -17,23 +17,42 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
   const [content, setContent] = useState('');
   const [xlsxPreview, setXlsxPreview] = useState('');
   const [copied, setCopied] = useState(false);
+  const [cleanHtml, setCleanHtml] = useState(false);
+
+  const formatWaybackTimestamp = (ts: string) => {
+    if (!ts || ts.length < 14) return ts;
+    return `${ts.slice(0, 4)}-${ts.slice(4, 6)}-${ts.slice(6, 8)} ${ts.slice(8, 10)}:${ts.slice(10, 12)}:${ts.slice(12, 14)}`;
+  };
+
+  const stripHtmlTags = (html: string) => {
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return (tmp.textContent || tmp.innerText || "").replace(/\s+/g, ' ').trim();
+  };
 
   // Prepare data for export
   const getExportData = (forExcel = false) => {
     return data.map((item) => {
       let pageContent = item.content || '';
+      
+      if (cleanHtml) {
+          pageContent = stripHtmlTags(pageContent);
+      }
+
       // Excel has a cell character limit of 32,767 characters.
       // We truncate it to avoid file corruption for the XLSX format.
       if (forExcel && pageContent.length > 32000) {
         pageContent = pageContent.substring(0, 32000) + '...[TRUNCATED FOR EXCEL LIMIT]';
       }
 
+      const dateObj = new Date(item.savedAt);
+
       return {
         id: item.id,
         url: item.url,
-        originalUrl: item.originalUrl,
-        timestamp: item.timestamp,
-        savedAtISO: new Date(item.savedAt).toISOString(),
+        original_url: item.originalUrl,
+        capture_date: formatWaybackTimestamp(item.timestamp),
+        saved_date: dateObj.toLocaleString(),
         mimetype: item.mimetype,
         page_content: pageContent
       };
@@ -44,7 +63,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
     if (isOpen) {
       generateContent(format);
     }
-  }, [format, isOpen, data]);
+  }, [format, isOpen, data, cleanHtml]);
 
   const generateContent = (fmt: ExportFormat) => {
     setContent('');
@@ -59,7 +78,6 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
         break;
       case 'csv':
         const csvWs = XLSX.utils.json_to_sheet(fullData);
-        // Using sheet_to_csv handles quoting and escaping better than manual string manipulation
         setContent(XLSX.utils.sheet_to_csv(csvWs));
         break;
       case 'text':
@@ -81,14 +99,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
     return items.map(item => `
 ==================================================
 ID: ${item.id}
-Original URL: ${item.originalUrl}
+Original URL: ${item.original_url}
 Wayback URL: ${item.url}
-Timestamp: ${item.timestamp}
-Saved At: ${item.savedAtISO}
+Capture Date: ${item.capture_date}
+Saved Date: ${item.saved_date}
 MimeType: ${item.mimetype}
 --------------------------------------------------
 CONTENT PREVIEW:
-${item.page_content.substring(0, 500)}${item.page_content.length > 500 ? '...' : ''}
+${item.page_content.substring(0, 1000)}${item.page_content.length > 1000 ? '...' : ''}
 ==================================================
 `).join('\n\n');
   };
@@ -100,21 +118,32 @@ ${item.page_content.substring(0, 500)}${item.page_content.length > 500 ? '...' :
   id VARCHAR(255) PRIMARY KEY,
   url TEXT,
   original_url TEXT,
-  timestamp VARCHAR(20),
-  saved_at VARCHAR(30),
+  capture_date DATETIME,
+  saved_date DATETIME,
   mimetype VARCHAR(50),
   page_content TEXT
 );\n\n`;
 
     const inserts = items.map(item => {
-      const values = Object.values(item)
+      // Use explicit ordering for SQL values
+      const valArray = [
+          item.id,
+          item.url,
+          item.original_url,
+          item.capture_date,
+          item.saved_date,
+          item.mimetype,
+          item.page_content
+      ];
+
+      const values = valArray
         .map(val => {
            // Basic SQL escaping: replace single quotes with two single quotes
            const str = String(val).replace(/'/g, "''");
            return `'${str}'`;
         }) 
         .join(', ');
-      return `INSERT INTO ${tableName} VALUES (${values});`;
+      return `INSERT INTO ${tableName} (id, url, original_url, capture_date, saved_date, mimetype, page_content) VALUES (${values});`;
     }).join('\n');
 
     return createTable + inserts;
@@ -173,9 +202,24 @@ ${item.page_content.substring(0, 500)}${item.page_content.length > 500 ? '...' :
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-800 shrink-0">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Database className="w-5 h-5 text-teal-400" /> Export Database
-          </h2>
+          <div className="flex items-center gap-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Database className="w-5 h-5 text-teal-400" /> Export Database
+              </h2>
+              <div className="h-6 w-px bg-gray-700"></div>
+              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none group">
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${cleanHtml ? 'bg-teal-500 border-teal-500' : 'border-gray-600 bg-gray-800 group-hover:border-gray-500'}`}>
+                      {cleanHtml && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <input 
+                      type="checkbox" 
+                      className="hidden" 
+                      checked={cleanHtml} 
+                      onChange={(e) => setCleanHtml(e.target.checked)} 
+                  />
+                  <span className="flex items-center gap-1.5"><Wand2 className="w-3 h-3 text-purple-400" /> Clean HTML (Extract Text)</span>
+              </label>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
             <X className="w-6 h-6" />
           </button>
