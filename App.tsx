@@ -49,7 +49,6 @@ const App: React.FC = () => {
       case AppView.METADATA:
         return (
           <MetadataExplorer
-            settings={settings}
             onChangeView={setCurrentView}
             onSearchTransfer={handleNavigateToSearch}
           />
@@ -57,14 +56,13 @@ const App: React.FC = () => {
       case AppView.SCRAPING:
         return (
           <ScrapingBrowser
-            settings={settings}
             initialQuery={globalQuery}
             onClearQuery={() => setGlobalQuery('')}
             onChangeView={setCurrentView}
           />
         );
       case AppView.ANALYTICS:
-        return <AnalyticsDashboard settings={settings} onChangeView={setCurrentView} />;
+        return <AnalyticsDashboard onChangeView={setCurrentView} />;
       case AppView.WAYBACK:
         return <WaybackTools settings={settings} onChangeView={setCurrentView} />;
       case AppView.SETTINGS:
@@ -99,7 +97,7 @@ const App: React.FC = () => {
 
       <main id="main-content" className="flex-1 flex flex-col min-w-0 overflow-hidden bg-gray-900" role="main">
         {/* Top Header Bar */}
-        <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-8 shadow-sm">
+        <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-8 lg:px-8 px-16 shadow-sm">
           <h2 className="text-lg font-bold text-white tracking-wide">{getViewTitle()}</h2>
           <div className="flex items-center gap-4" role="status" aria-label="Application status">
             {settings.demoMode && (

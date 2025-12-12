@@ -8,6 +8,7 @@ export default [
     ignores: ['node_modules/**', 'dist/**', 'build/**'],
   },
   js.configs.recommended,
+  // Configuration for TypeScript/React files
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
@@ -63,6 +64,36 @@ export default [
       react: {
         version: 'detect',
       },
+    },
+  },
+  // Configuration for Node.js backend files
+  {
+    files: ['backend/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        // Node.js globals
+        process: 'readonly',
+        Buffer: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        exports: 'writable',
+        module: 'writable',
+        require: 'readonly',
+        global: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly',
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-undef': 'error',
+      'no-unused-vars': 'warn',
     },
   },
 ];

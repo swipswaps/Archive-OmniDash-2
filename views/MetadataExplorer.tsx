@@ -1,33 +1,29 @@
 import React, { useState } from 'react';
 import {
-  Search,
-  Save,
-  Trash2,
   FileText,
   Code,
   Sparkles,
   Database,
   ArrowRight,
-  AlertCircle,
-  Info,
   Link as LinkIcon,
   ExternalLink,
 } from 'lucide-react';
 import { fetchMetadata } from '../services/iaService';
-import { IAMetadata, AppSettings, AppView } from '../types';
+import { IAMetadata, AppView } from '../types';
 import { Button } from '../components/ui/Button';
+import { ErrorMessage } from '../components/ErrorMessage';
+import { enhanceError } from '../utils/errorHelpers';
 
 interface Props {
-  settings: AppSettings;
   onChangeView?: (view: AppView) => void;
   onSearchTransfer?: (query: string) => void;
 }
 
-const MetadataExplorer: React.FC<Props> = ({ _settings, onChangeView, onSearchTransfer }) => {
+const MetadataExplorer: React.FC<Props> = ({ onChangeView, onSearchTransfer }) => {
   const [identifier, setIdentifier] = useState('');
   const [data, setData] = useState<IAMetadata | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<Error | null>(null);
   const [activeTab, setActiveTab] = useState<'view' | 'json'>('view');
 
   const SUGGESTIONS = ['internetarchive', 'nasa', 'grateful-dead', 'prelinger', 'librivoxaudio'];
@@ -78,7 +74,7 @@ const MetadataExplorer: React.FC<Props> = ({ _settings, onChangeView, onSearchTr
     }
 
     setLoading(true);
-    setError('');
+    setError(null);
     setData(null);
 
     try {
@@ -93,7 +89,7 @@ const MetadataExplorer: React.FC<Props> = ({ _settings, onChangeView, onSearchTr
       }
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch metadata');
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoading(false);
     }
@@ -160,41 +156,28 @@ const MetadataExplorer: React.FC<Props> = ({ _settings, onChangeView, onSearchTr
           )}
         </div>
 
-        {error && (
-          <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-3 mb-2">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <span className="font-medium">{error}</span>
-            </div>
-            {/* Intelligent Error Suggestions */}
-            {onSearchTransfer && (
-              <div className="ml-8 text-sm text-red-300/80 space-y-3">
-                {identifier.includes('archive.org') ? (
-                  <p>
-                    It looks like you pasted a URL but we couldn't extract a valid ID. Try pasting
-                    just the identifier (the part after <code>/details/</code>).
-                  </p>
-                ) : isLikelySearchQuery(identifier) ? (
-                  <div className="flex flex-col items-start gap-2">
-                    <p>
-                      "{identifier}" looks like a search query or a generic URL, not an Item
-                      Identifier.
-                    </p>
-                    <Button
-                      variant="secondary"
-                      className="text-xs h-8 bg-red-500/20 hover:bg-red-500/30 border-red-500/30 text-red-200"
-                      onClick={() => onSearchTransfer(identifier)}
-                    >
-                      Search for "{identifier}" in Deep Search
-                    </Button>
-                  </div>
-                ) : (
-                  <p>Ensure the ID is correct. If you are looking for keywords, use Deep Search.</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        {error && (() => {
+          const enhanced = enhanceError(error);
+          const customSuggestions = [...enhanced.suggestions];
+
+          // Add context-specific suggestions
+          if (identifier.includes('archive.org')) {
+            customSuggestions.unshift('Try pasting just the identifier (the part after /details/)');
+          } else if (isLikelySearchQuery(identifier)) {
+            customSuggestions.unshift(`"${identifier}" looks like a search query - try Deep Search instead`);
+          }
+
+          return (
+            <ErrorMessage
+              title={enhanced.title}
+              message={enhanced.message}
+              suggestions={customSuggestions}
+              onRetry={() => handleFetch()}
+              onDismiss={() => setError(null)}
+              className="mt-6 animate-in fade-in slide-in-from-top-2"
+            />
+          );
+        })()}
       </div>
 
       {data ? (
@@ -247,24 +230,24 @@ const MetadataExplorer: React.FC<Props> = ({ _settings, onChangeView, onSearchTr
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Title</label>
                           <p className="text-xl font-bold text-white">
-                            {data.metadata?.title || 'Untitled'}
+                            {String(data.metadata?.title || 'Untitled')}
                           </p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="text-xs text-gray-500 block mb-1">Identifier</label>
                             <p className="text-gray-300 font-mono text-sm bg-gray-950 px-2 py-1 rounded inline-block select-all">
-                              {data.metadata?.identifier}
+                              {String(data.metadata?.identifier || '')}
                             </p>
                           </div>
                           <div>
                             <label className="text-xs text-gray-500 block mb-1">Date</label>
-                            <p className="text-gray-300">{data.metadata?.date || 'N/A'}</p>
+                            <p className="text-gray-300">{String(data.metadata?.date || 'N/A')}</p>
                           </div>
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Creator</label>
-                          <p className="text-gray-300">{data.metadata?.creator || 'Unknown'}</p>
+                          <p className="text-gray-300">{String(data.metadata?.creator || 'Unknown')}</p>
                         </div>
                       </div>
                     </div>

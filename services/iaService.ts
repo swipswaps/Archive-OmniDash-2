@@ -5,8 +5,8 @@ import { getMockMetadata, getMockSearchResults, getMockViews } from './mockServi
 const getSettings = () => {
   try {
     const settings = localStorage.getItem('omnidash_settings');
-    return settings ? JSON.parse(_settings) : {};
-  } catch (_e) {
+    return settings ? JSON.parse(settings) : {};
+  } catch {
     return {};
   }
 };

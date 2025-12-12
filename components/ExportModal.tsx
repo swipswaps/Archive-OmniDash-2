@@ -11,7 +11,7 @@ import {
   X,
   Wand2,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { SavedSnapshot } from '../types';
 import { Button } from './ui/Button';
 
@@ -32,7 +32,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
 
   const formatWaybackTimestamp = (ts: string) => {
     if (!ts || ts.length < 14) return ts;
-    return `${ts.slice(0, 4)}-${ts.slice(4, 6)}-${ts.slice(6, 8)} ${ts.slice(8, 10)}:${ts.slice(10, 12)}:${ts.slice(12, 14)}`;
+    return `${ts.substring(0, 4)}-${ts.substring(4, 6)}-${ts.substring(6, 8)} ${ts.substring(8, 10)}:${ts.substring(10, 12)}:${ts.substring(12, 14)}`;
   };
 
   const stripHtmlTags = (html: string) => {
@@ -51,7 +51,6 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
       }
 
       // Excel has a cell character limit of 32,767 characters.
-      // We truncate it to avoid file corruption for the XLSX format.
       if (forExcel && pageContent.length > 32000) {
         pageContent = pageContent.substring(0, 32000) + '...[TRUNCATED FOR EXCEL LIMIT]';
       }
@@ -70,13 +69,31 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
     });
   };
 
+  // Convert array of objects to CSV
+  const jsonToCSV = (items: any[]) => {
+    if (items.length === 0) return '';
+    const headers = Object.keys(items[0]);
+    const csvRows = [
+      headers.join(','),
+      ...items.map(row =>
+        headers.map(header => {
+          const val = row[header] || '';
+          // Escape quotes and wrap in quotes if contains comma/newline
+          const escaped = String(val).replace(/"/g, '""');
+          return /[,\n"]/.test(escaped) ? `"${escaped}"` : escaped;
+        }).join(',')
+      )
+    ];
+    return csvRows.join('\n');
+  };
+
   useEffect(() => {
     if (isOpen) {
       generateContent(format);
     }
   }, [format, isOpen, data, cleanHtml]);
 
-  const generateContent = (fmt: ExportFormat) => {
+  const generateContent = async (fmt: ExportFormat) => {
     setContent('');
     setXlsxPreview('');
 
@@ -88,8 +105,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
         setContent(JSON.stringify(fullData, null, 2));
         break;
       case 'csv':
-        const csvWs = XLSX.utils.json_to_sheet(fullData);
-        setContent(XLSX.utils.sheet_to_csv(csvWs));
+        setContent(jsonToCSV(fullData));
         break;
       case 'text':
         setContent(generateText(fullData));
@@ -98,12 +114,35 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
         setContent(generateSQL(fullData));
         break;
       case 'xlsx':
-        const ws = XLSX.utils.json_to_sheet(excelData);
-        // Generate HTML table for preview
-        const html = XLSX.utils.sheet_to_html(ws, { id: 'xlsx-preview', header: '', footer: '' });
-        setXlsxPreview(html);
+        await generateExcelPreview(excelData);
         break;
     }
+  };
+
+  const generateExcelPreview = async (items: any[]) => {
+    if (items.length === 0) {
+      setXlsxPreview('<p>No data to preview</p>');
+      return;
+    }
+
+    const headers = Object.keys(items[0]);
+    let html = '<table id="xlsx-preview"><thead><tr>';
+    headers.forEach(h => {
+      html += `<th>${h}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    
+    items.forEach(row => {
+      html += '<tr>';
+      headers.forEach(h => {
+        const val = row[h] || '';
+        const escaped = String(val).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += `<td title="${escaped}">${escaped}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    setXlsxPreview(html);
   };
 
   const generateText = (items: any[]) => {
@@ -112,14 +151,14 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
         item => `
 ==================================================
 ID: ${item.id}
+URL: ${item.url}
 Original URL: ${item.original_url}
-Wayback URL: ${item.url}
 Capture Date: ${item.capture_date}
 Saved Date: ${item.saved_date}
-MimeType: ${item.mimetype}
+MIME Type: ${item.mimetype}
 --------------------------------------------------
 CONTENT PREVIEW:
-${item.page_content.substring(0, 1000)}${item.page_content.length > 1000 ? '...' : ''}
+${item.page_content.substring(0, 500)}${item.page_content.length > 500 ? '...' : ''}
 ==================================================
 `
       )
@@ -141,7 +180,6 @@ ${item.page_content.substring(0, 1000)}${item.page_content.length > 1000 ? '...'
 
     const inserts = items
       .map(item => {
-        // Use explicit ordering for SQL values
         const valArray = [
           item.id,
           item.url,
@@ -154,45 +192,92 @@ ${item.page_content.substring(0, 1000)}${item.page_content.length > 1000 ? '...'
 
         const values = valArray
           .map(val => {
-            // Basic SQL escaping: replace single quotes with two single quotes
             const str = String(val).replace(/'/g, "''");
             return `'${str}'`;
           })
           .join(', ');
-        return `INSERT INTO ${tableName} (id, url, original_url, capture_date, saved_date, mimetype, page_content) VALUES (${values});`;
+        return `INSERT INTO ${tableName} VALUES (${values});`;
       })
       .join('\n');
 
     return createTable + inserts;
   };
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     let textToCopy = content;
 
-    // For XLSX, we copy a TSV (Tab Separated Values) representation
-    // which allows pasting directly into Excel/Sheets
+    // For XLSX, copy as TSV (Tab Separated Values)
     if (format === 'xlsx') {
-      const ws = XLSX.utils.json_to_sheet(getExportData(true));
-      textToCopy = XLSX.utils.sheet_to_csv(ws, { FS: '\t' });
+      const items = getExportData(true);
+      if (items.length > 0) {
+        const headers = Object.keys(items[0]);
+        const tsvRows = [
+          headers.join('\t'),
+          ...items.map(row => headers.map(h => row[h] || '').join('\t'))
+        ];
+        textToCopy = tsvRows.join('\n');
+      }
     }
 
-    navigator.clipboard.writeText(textToCopy);
+    await navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `omnidash_export_${timestamp}`;
 
     if (format === 'xlsx') {
       const excelData = getExportData(true);
-      const ws = XLSX.utils.json_to_sheet(excelData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Snapshots');
-      XLSX.writeFile(wb, `${filename}.xlsx`);
+      
+      // Create workbook using ExcelJS
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Snapshots');
+
+      if (excelData.length > 0) {
+        // Add headers
+        const headers = Object.keys(excelData[0]);
+        worksheet.addRow(headers);
+        
+        // Style header row
+        worksheet.getRow(1).font = { bold: true };
+        worksheet.getRow(1).fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFE0E0E0' }
+        };
+
+        // Add data rows
+        excelData.forEach(item => {
+          worksheet.addRow(Object.values(item));
+        });
+
+        // Auto-fit columns
+        worksheet.columns.forEach(column => {
+          let maxLength = 0;
+          column.eachCell?.({ includeEmpty: false }, cell => {
+            const length = cell.value ? String(cell.value).length : 0;
+            maxLength = Math.max(maxLength, length);
+          });
+          column.width = Math.min(maxLength + 2, 50);
+        });
+      }
+
+      // Generate buffer and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `snapshots-${timestamp}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } else {
-      const mimeTypes = {
+      const mimeTypes: Record<string, string> = {
         json: 'application/json',
         csv: 'text/csv',
         text: 'text/plain',
@@ -203,7 +288,7 @@ ${item.page_content.substring(0, 1000)}${item.page_content.length > 1000 ? '...'
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${filename}.${format}`;
+      a.download = `snapshots-${timestamp}.${format}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -224,9 +309,7 @@ ${item.page_content.substring(0, 1000)}${item.page_content.length > 1000 ? '...'
             </h2>
             <div className="h-6 w-px bg-gray-700"></div>
             <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer select-none group">
-              <div
-                className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${cleanHtml ? 'bg-teal-500 border-teal-500' : 'border-gray-600 bg-gray-800 group-hover:border-gray-500'}`}
-              >
+              <div className="w-4 h-4 rounded border-2 border-gray-600 group-hover:border-purple-400 transition-colors flex items-center justify-center bg-gray-800">
                 {cleanHtml && <Check className="w-3 h-3 text-white" />}
               </div>
               <input
@@ -257,7 +340,7 @@ ${item.page_content.substring(0, 1000)}${item.page_content.length > 1000 ? '...'
             <button
               key={tab.id}
               onClick={() => setFormat(tab.id as ExportFormat)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
                 format === tab.id
                   ? 'bg-gray-800 text-teal-400 border border-gray-700 shadow-sm'
                   : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
@@ -272,15 +355,14 @@ ${item.page_content.substring(0, 1000)}${item.page_content.length > 1000 ? '...'
         <div className="flex-1 p-0 overflow-hidden relative bg-gray-950">
           {format === 'xlsx' ? (
             <div className="w-full h-full overflow-auto p-0 bg-white text-gray-900">
-              {/* XLSX Preview Styling */}
               <style>{`
-                    #xlsx-preview { border-collapse: collapse; font-size: 12px; font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100%; table-layout: fixed; }
-                    #xlsx-preview td, #xlsx-preview th { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; height: 28px; box-sizing: border-box; }
-                    #xlsx-preview td { max-width: 300px; color: #1f2937; }
-                    #xlsx-preview th { background-color: #f9fafb; font-weight: 600; color: #374151; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 0 #e5e7eb; }
-                    #xlsx-preview tr:nth-child(even) { background-color: #f9fafb; }
-                    #xlsx-preview tr:hover { background-color: #eff6ff; }
-                 `}</style>
+                #xlsx-preview { border-collapse: collapse; font-size: 12px; font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100%; table-layout: fixed; }
+                #xlsx-preview td, #xlsx-preview th { border: 1px solid #e5e7eb; padding: 4px 8px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; height: 28px; box-sizing: border-box; }
+                #xlsx-preview td { max-width: 300px; color: #1f2937; }
+                #xlsx-preview th { background-color: #f9fafb; font-weight: 600; color: #374151; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 0 #e5e7eb; }
+                #xlsx-preview tr:nth-child(even) { background-color: #f9fafb; }
+                #xlsx-preview tr:hover { background-color: #eff6ff; }
+              `}</style>
               <div dangerouslySetInnerHTML={{ __html: xlsxPreview }} />
             </div>
           ) : (

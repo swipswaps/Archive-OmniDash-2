@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Globe,
   Camera,
-  Calendar,
   CheckCircle,
   XCircle,
   AlertTriangle,
@@ -10,23 +9,16 @@ import {
   Loader2,
   Trash2,
   Search,
-  BarChart3,
   Clock,
   X,
-  Filter,
   Download,
   Database,
-  Play,
-  Settings as SettingsIcon,
   FileDown,
   Eye,
-  Maximize2,
-  Minimize2,
-  Upload,
   Info,
   Library,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import {
   checkAvailability,
   savePageNow,
@@ -60,7 +52,6 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
   const [cdxData, setCdxData] = useState<CDXRecord[]>([]);
   const [saveHistory, setSaveHistory] = useState<SaveRequestItem[]>([]);
   const [savedSnapshots, setSavedSnapshots] = useState<SavedSnapshot[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
@@ -119,7 +110,6 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
     }
 
     setLoading(true);
-    setHasSearched(false);
     setSelectedYear(null);
 
     // Reset data for the current mode to show fresh loading state
@@ -172,7 +162,6 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
       }
     } finally {
       setLoading(false);
-      setHasSearched(true);
     }
   };
 

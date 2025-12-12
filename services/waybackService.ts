@@ -6,7 +6,7 @@ const getSettings = () => {
   try {
     const settings = localStorage.getItem('omnidash_settings');
     return settings ? JSON.parse(settings) : {};
-  } catch (e) {
+  } catch {
     return {};
   }
 };

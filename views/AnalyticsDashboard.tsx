@@ -23,16 +23,15 @@ import {
   Globe,
 } from 'lucide-react';
 import { fetchViews, searchItems } from '../services/iaService';
-import { AppSettings, AppView } from '../types';
+import { AppView } from '../types';
 import { Button } from '../components/ui/Button';
 
 interface Props {
-  settings: AppSettings;
   // Optional: Allow switching views from here
   onChangeView?: (view: AppView) => void;
 }
 
-const AnalyticsDashboard: React.FC<Props> = ({ settings, onChangeView }) => {
+const AnalyticsDashboard: React.FC<Props> = ({ onChangeView }) => {
   const [identifier, setIdentifier] = useState('');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -174,7 +173,7 @@ const AnalyticsDashboard: React.FC<Props> = ({ settings, onChangeView }) => {
       localStorage.setItem('omnidash_settings', JSON.stringify({ ...parsed, demoMode: true }));
       window.location.reload();
     } catch (_e) {
-      console.error(e);
+      console.error(_e);
     }
   };
 

@@ -13,11 +13,10 @@ import {
   Settings as SettingsIcon,
 } from 'lucide-react';
 import { searchItems } from '../services/iaService';
-import { IASearchResult, AppSettings, AppView } from '../types';
+import { IASearchResult, AppView } from '../types';
 import { Button } from '../components/ui/Button';
 
 interface Props {
-  settings: AppSettings;
   initialQuery?: string;
   onClearQuery?: () => void;
   // Optional: Allow switching views from here if we detect user wants Wayback
@@ -27,7 +26,6 @@ interface Props {
 type SearchMode = 'general' | 'scrape';
 
 const ScrapingBrowser: React.FC<Props> = ({
-  settings,
   initialQuery,
   onClearQuery,
   onChangeView,

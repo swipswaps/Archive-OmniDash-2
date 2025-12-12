@@ -7,30 +7,7 @@
     <title>Archive OmniDash - Internet Archive Toolkit</title>
     <!-- Accessibility CSS -->
     <link rel="stylesheet" href="/accessibility.css" />
-    <!-- Using Tailwind CDN for quick setup without local build config -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              ia: {
-                50: '#f7f7f8',
-                100: '#ececf1',
-                200: '#d9d9e3',
-                300: '#b4b4c7',
-                400: '#8e8ea8',
-                500: '#686889',
-                600: '#52526e',
-                700: '#404055',
-                800: '#333342',
-                900: '#2b2b36',
-              }
-            }
-          }
-        }
-      }
-    </script>
+    <!-- Custom scrollbar styles -->
     <style>
       /* Custom scrollbar for webkit */
       ::-webkit-scrollbar {
@@ -38,14 +15,14 @@
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #1e1e24; 
+        background: #1e1e24;
       }
       ::-webkit-scrollbar-thumb {
-        background: #404055; 
+        background: #404055;
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #52526e; 
+        background: #52526e;
       }
     </style>
   <script type="importmap">

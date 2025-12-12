@@ -33,3 +33,15 @@ yarn-error.log*
 
 # OS
 Thumbs.db
+
+# Credentials (encrypted)
+backend/credentials.enc
+backend/.encryption-key
+
+# Test outputs
+*_test_output.txt
+ux_test_screenshots/
+all_screens_test/
+tailwind_built_test/
+settings_test/
+*.png.txt
