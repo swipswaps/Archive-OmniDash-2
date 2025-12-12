@@ -146,8 +146,8 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
           );
         }
       } else if (activeMode === 'cdx') {
-        // Fetch more items for better browsing (3000)
-        const res = await fetchCDX(targetUrl, 3000);
+        // Fetch more items for better browsing and accurate chart (10000)
+        const res = await fetchCDX(targetUrl, 10000);
         setCdxData(res);
       }
     } catch (e: any) {
@@ -545,9 +545,14 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                 <div className="flex-1 flex flex-col space-y-6">
                   {/* Chart Section */}
                   <div className="h-48 bg-gray-800 rounded-xl border border-gray-700 p-4 relative">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 absolute top-4 left-4">
-                      Capture Frequency
-                    </h4>
+                    <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        Capture Frequency
+                      </h4>
+                      <span className="text-xs text-gray-500">
+                        Showing {cdxData.length.toLocaleString()} captures
+                      </span>
+                    </div>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={getCdxStats()} margin={{ top: 30, right: 10, left: 0, bottom: 0 }}>
                         <Tooltip
@@ -558,6 +563,8 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                             color: '#f3f4f6',
                             borderRadius: '0.5rem',
                           }}
+                          formatter={(value: number) => [`${value} captures`, 'Count']}
+                          labelFormatter={(label) => `Year: ${label}`}
                         />
                         <XAxis
                           dataKey="year"
