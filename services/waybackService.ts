@@ -95,9 +95,13 @@ export const fetchCDX = async (url: string, limit: number = 10000): Promise<CDXR
     // Basic clean of URL for CDX to ensure we hit the index
     // CDX is fussy about protocols sometimes, but usually passing the full URL is best.
     const encodedUrl = encodeURIComponent(url);
-    // Removed collapse parameter to get all unique captures
-    // Increased limit to 10000 for better historical data
-    const api = `${API_BASE.CDX}?url=${encodedUrl}&output=json&limit=${limit}&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
+
+    // CDX API parameters:
+    // - collapse=none: Get ALL captures, not collapsed/sampled
+    // - limit: Maximum number of results
+    // - fl: Fields to return
+    // Without collapse=none, CDX returns monthly samples (hence 15 per year)
+    const api = `${API_BASE.CDX}?url=${encodedUrl}&output=json&collapse=none&limit=${limit}&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
 
     const res = await fetch(getProxiedUrl(api));
     if (!res.ok) {
