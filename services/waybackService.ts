@@ -107,12 +107,19 @@ export const fetchCDX = async (url: string, limit: number = 10000): Promise<CDXR
     // CDX is fussy about protocols sometimes, but usually passing the full URL is best.
     const encodedUrl = encodeURIComponent(url);
 
-    // CDX API parameters:
-    // - collapse=none: Get ALL captures, not collapsed/sampled
-    // - limit: Maximum number of results
-    // - fl: Fields to return
-    // Without collapse=none, CDX returns monthly samples (hence 15 per year)
-    const api = `${API_BASE.CDX}?url=${encodedUrl}&output=json&collapse=none&limit=${limit}&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
+    // CDX API Documentation: https://github.com/internetarchive/wayback/tree/master/wayback-cdx-server
+    //
+    // IMPORTANT: There is NO "collapse=none" parameter! That was incorrect.
+    //
+    // Collapse options:
+    // - NO collapse parameter = ALL unique captures (what we want!)
+    // - collapse=timestamp:6 = monthly (YYYYMM) - ~12 per year
+    // - collapse=timestamp:8 = daily (YYYYMMDD) - ~365 per year
+    // - collapse=timestamp:10 = hourly (YYYYMMDDHH)
+    // - collapse=digest = unique content only
+    //
+    // By NOT specifying collapse, we get all captures up to the limit
+    const api = `${API_BASE.CDX}?url=${encodedUrl}&output=json&limit=${limit}&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
 
     const res = await fetch(getProxiedUrl(api));
     if (!res.ok) {
