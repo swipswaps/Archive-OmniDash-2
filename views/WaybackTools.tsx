@@ -39,7 +39,11 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
   
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Load saved snapshots when switching to 'saved' mode
+  // Load saved snapshots when switching to 'saved' mode or initially
+  useEffect(() => {
+    loadSavedSnapshots();
+  }, []);
+
   useEffect(() => {
     if (mode === 'saved') {
       loadSavedSnapshots();
@@ -155,6 +159,9 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
           };
 
           await storageService.saveSnapshot(snapshot);
+          // Update local list
+          await loadSavedSnapshots();
+          
           // Show quick success state
           const btn = document.getElementById(`btn-dl-${dlKey}`);
           if (btn) btn.classList.add('text-green-500');
@@ -192,6 +199,7 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
         };
 
         await storageService.saveSnapshot(snapshot);
+        await loadSavedSnapshots();
         alert("Success! Snapshot saved to the 'Library'.");
     } catch (e: any) {
         setError(e.message || "Save Failed");
@@ -232,20 +240,14 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
   const handleDeleteSnapshot = async (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
       if (confirm('Are you sure you want to delete this snapshot?')) {
-          // Store previous state for rollback
           const prevSnapshots = [...savedSnapshots];
-          
-          // Optimistic update: Remove immediately from UI
-          // Using String() comparison to be safe against number/string mismatches
           setSavedSnapshots(current => current.filter(s => String(s.id) !== String(id)));
 
           try {
               await storageService.deleteSnapshot(id);
-              // Force reload to ensure DB and UI are perfectly synced
               await loadSavedSnapshots();
           } catch (error) {
               console.error("Delete failed:", error);
-              // Revert optimistic update on failure
               setSavedSnapshots(prevSnapshots);
               alert("Failed to delete snapshot. Please try again.");
           }
@@ -253,19 +255,14 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
   };
 
   const getPreviewContent = (snap: SavedSnapshot) => {
-      // Inject <base> tag to fix relative links/images by pointing them to the live Wayback Machine URL
-      // This allows the saved HTML to render images/CSS that are not saved locally.
       const baseUrl = `https://web.archive.org/web/${snap.timestamp}/`;
       const baseTag = `<base href="${baseUrl}" target="_blank" />`;
-      
-      // We inject it right after <head> or at the beginning if no head
       if (snap.content.includes('<head>')) {
           return snap.content.replace('<head>', `<head>${baseTag}`);
       }
       return `${baseTag}${snap.content}`;
   };
 
-  // Helper for CDX visualization
   const getCdxStats = () => {
       const stats: Record<string, number> = {};
       cdxData.forEach(row => {
@@ -291,7 +288,7 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                </p>
            </div>
            
-           <div className="bg-gray-800 p-1 rounded-xl border border-gray-700 flex text-xs font-medium">
+           <div className="bg-gray-800 p-1 rounded-xl border border-gray-700 flex flex-wrap text-xs font-medium">
                 <button 
                     onClick={() => setMode('available')}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${mode === 'available' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
@@ -315,6 +312,16 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${mode === 'saved' ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
                 >
                     <Library className="w-3.5 h-3.5" /> Library
+                </button>
+                
+                {/* Direct Export Action */}
+                <div className="w-px bg-gray-600 mx-1 my-2"></div>
+                <button 
+                    onClick={() => setIsExportOpen(true)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-teal-400 hover:text-white hover:bg-teal-600/20 transition-all"
+                    title="Export Saved Data"
+                >
+                    <Database className="w-3.5 h-3.5" /> Export
                 </button>
            </div>
        </div>
