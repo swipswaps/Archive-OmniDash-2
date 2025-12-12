@@ -6,16 +6,23 @@ const STORE_NAME = 'snapshots';
 
 class StorageService {
   private db: IDBDatabase | null = null;
+  private initPromise: Promise<void> | null = null;
 
   async init(): Promise<void> {
     if (this.db) return;
+    if (this.initPromise) return this.initPromise;
 
-    return new Promise((resolve, reject) => {
+    this.initPromise = new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () => {
+        this.initPromise = null;
+        reject(request.error);
+      };
+
       request.onsuccess = () => {
         this.db = request.result;
+        this.initPromise = null;
         resolve();
       };
 
@@ -28,18 +35,25 @@ class StorageService {
         }
       };
     });
+
+    return this.initPromise;
   }
 
   async saveSnapshot(snapshot: SavedSnapshot): Promise<void> {
     await this.init();
     return new Promise((resolve, reject) => {
       if (!this.db) return reject('Database not initialized');
-      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.put(snapshot);
+      try {
+        const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.put(snapshot);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        request.onerror = () => reject(request.error);
+      } catch (e) {
+        reject(e);
+      }
     });
   }
 
@@ -47,17 +61,20 @@ class StorageService {
     await this.init();
     return new Promise((resolve, reject) => {
       if (!this.db) return reject('Database not initialized');
-      const transaction = this.db.transaction([STORE_NAME], 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.getAll();
+      try {
+        const transaction = this.db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        // Sort by savedAt descending (newest first)
-        const results = request.result as SavedSnapshot[];
-        results.sort((a, b) => b.savedAt - a.savedAt);
-        resolve(results);
-      };
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const results = request.result as SavedSnapshot[];
+          results.sort((a, b) => b.savedAt - a.savedAt);
+          resolve(results);
+        };
+      } catch (e) {
+        reject(e);
+      }
     });
   }
 
@@ -65,12 +82,16 @@ class StorageService {
     await this.init();
     return new Promise((resolve, reject) => {
       if (!this.db) return reject('Database not initialized');
-      const transaction = this.db.transaction([STORE_NAME], 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.get(id);
+      try {
+        const transaction = this.db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.get(id);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+      } catch (e) {
+        reject(e);
+      }
     });
   }
 
@@ -78,12 +99,17 @@ class StorageService {
     await this.init();
     return new Promise((resolve, reject) => {
       if (!this.db) return reject('Database not initialized');
-      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.delete(id);
+      try {
+        const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(id);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        request.onerror = () => reject(request.error);
+      } catch (e) {
+        reject(e);
+      }
     });
   }
 }
