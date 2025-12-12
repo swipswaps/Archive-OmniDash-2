@@ -18,7 +18,7 @@ import {
   Info,
   Library,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import {
   checkAvailability,
   savePageNow,
@@ -549,7 +549,7 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                       Capture Frequency
                     </h4>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={getCdxStats()}>
+                      <BarChart data={getCdxStats()} margin={{ top: 30, right: 10, left: 0, bottom: 0 }}>
                         <Tooltip
                           cursor={{ fill: '#374151', opacity: 0.4 }}
                           contentStyle={{
@@ -558,6 +558,17 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                             color: '#f3f4f6',
                             borderRadius: '0.5rem',
                           }}
+                        />
+                        <XAxis
+                          dataKey="year"
+                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          interval={0}
+                          stroke="#4b5563"
+                        />
+                        <YAxis
+                          tick={{ fontSize: 10, fill: '#9ca3af' }}
+                          stroke="#4b5563"
+                          width={30}
                         />
                         <Bar
                           dataKey="count"
@@ -575,12 +586,6 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                             />
                           ))}
                         </Bar>
-                        <XAxis
-                          dataKey="year"
-                          tick={{ fontSize: 10 }}
-                          interval={0}
-                          stroke="#4b5563"
-                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
