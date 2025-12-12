@@ -6,7 +6,9 @@ const getSettings = () => {
   try {
     const settings = localStorage.getItem('omnidash_settings');
     return settings ? JSON.parse(settings) : {};
-  } catch(e) { return {}; }
+  } catch (e) {
+    return {};
+  }
 };
 
 const isDemoMode = () => !!getSettings().demoMode;
@@ -14,78 +16,79 @@ const isDemoMode = () => !!getSettings().demoMode;
 const getProxiedUrl = (url: string) => {
   const { corsProxy } = getSettings();
   if (corsProxy && corsProxy.trim().length > 0) {
-      return `${corsProxy}${url}`;
+    return `${corsProxy}${url}`;
   }
   return url;
 };
 
 export const checkAvailability = async (url: string): Promise<WaybackAvailability> => {
   if (isDemoMode()) {
-     return new Promise(resolve => setTimeout(() => resolve(getMockAvailability(url)), 700));
+    return new Promise(resolve => setTimeout(() => resolve(getMockAvailability(url)), 700));
   }
 
   // Helper to construct response from CDX data
   const createFromCDX = (cdxRow: any[]): WaybackAvailability => {
-      const timestamp = cdxRow[1];
-      const original = cdxRow[2];
-      const status = cdxRow[4];
-      return {
-          url: url,
-          archived_snapshots: {
-              closest: {
-                  available: true,
-                  status: status,
-                  timestamp: timestamp,
-                  url: `http://web.archive.org/web/${timestamp}/${original}`
-              }
-          }
-      };
+    const timestamp = cdxRow[1];
+    const original = cdxRow[2];
+    const status = cdxRow[4];
+    return {
+      url: url,
+      archived_snapshots: {
+        closest: {
+          available: true,
+          status: status,
+          timestamp: timestamp,
+          url: `http://web.archive.org/web/${timestamp}/${original}`,
+        },
+      },
+    };
   };
 
   try {
     // 1. Try standard Availability API
     const target = `${API_BASE.WAYBACK_AVAILABLE}?url=${encodeURIComponent(url)}`;
     const res = await fetch(getProxiedUrl(target));
-    
+
     if (res.ok) {
-        const data = await res.json();
-        // If successful and has data, return it
-        if (data && data.archived_snapshots && data.archived_snapshots.closest) {
-            return data;
-        }
+      const data = await res.json();
+      // If successful and has data, return it
+      if (data && data.archived_snapshots && data.archived_snapshots.closest) {
+        return data;
+      }
     }
-    
+
     // 2. Fallback: If Availability API failed or returned empty, try CDX "Last 1" strategy
     // limit=-1 fetches the most recent capture
-    console.log("Standard availability check empty/failed, falling back to CDX...");
+    console.log('Standard availability check empty/failed, falling back to CDX...');
     const cdxUrl = `${API_BASE.CDX}?url=${encodeURIComponent(url)}&output=json&limit=-1&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
     const cdxRes = await fetch(getProxiedUrl(cdxUrl));
 
     if (cdxRes.ok) {
-        const cdxJson = await cdxRes.json();
-        // CDX JSON is [[headers], [data]]
-        if (Array.isArray(cdxJson) && cdxJson.length > 1) {
-            return createFromCDX(cdxJson[1]);
-        }
+      const cdxJson = await cdxRes.json();
+      // CDX JSON is [[headers], [data]]
+      if (Array.isArray(cdxJson) && cdxJson.length > 1) {
+        return createFromCDX(cdxJson[1]);
+      }
     }
 
     // If both failed to find data, return empty state
     return {
-        url,
-        archived_snapshots: {}
+      url,
+      archived_snapshots: {},
     };
-
   } catch (error) {
-    console.error("Availability Check Error (Falling back to mock):", error);
+    console.error('Availability Check Error (Falling back to mock):', error);
     // Explicitly notify in console that we are mocking due to error
-    console.warn("Returning MOCK data because the live API call failed. Check your CORS Proxy settings.");
+    console.warn(
+      'Returning MOCK data because the live API call failed. Check your CORS Proxy settings.'
+    );
     return getMockAvailability(url);
   }
 };
 
 export const fetchCDX = async (url: string, limit: number = 3000): Promise<CDXRecord[]> => {
   if (isDemoMode()) {
-      return new Promise(resolve => setTimeout(() => resolve(getMockCDX(url)), 800));
+    return new Promise(resolve => setTimeout(() => resolve(getMockCDX(url)), 800));
   }
 
   try {
@@ -93,111 +96,126 @@ export const fetchCDX = async (url: string, limit: number = 3000): Promise<CDXRe
     // CDX is fussy about protocols sometimes, but usually passing the full URL is best.
     const encodedUrl = encodeURIComponent(url);
     const api = `${API_BASE.CDX}?url=${encodedUrl}&output=json&limit=${limit}&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
-    
+
     const res = await fetch(getProxiedUrl(api));
     if (!res.ok) {
-        throw new Error(`CDX fetch failed with status: ${res.status}`);
+      throw new Error(`CDX fetch failed with status: ${res.status}`);
     }
-    
-    const contentType = res.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-        const text = await res.text();
-        if (text.length === 0) return []; 
-        throw new Error("Received non-JSON response from CDX API");
+
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await res.text();
+      if (text.length === 0) return [];
+      throw new Error('Received non-JSON response from CDX API');
     }
 
     const json = await res.json();
     if (Array.isArray(json) && json.length > 1) {
-       return json.slice(1).map((row: string[]) => ({
-         urlkey: row[0],
-         timestamp: row[1],
-         original: row[2],
-         mimetype: row[3],
-         statuscode: row[4],
-         digest: row[5],
-         length: row[6]
-       }));
+      return json.slice(1).map((row: string[]) => ({
+        urlkey: row[0],
+        timestamp: row[1],
+        original: row[2],
+        mimetype: row[3],
+        statuscode: row[4],
+        digest: row[5],
+        length: row[6],
+      }));
     }
     return [];
   } catch (error) {
-    console.error("CDX Error (Falling back to mock):", error);
+    console.error('CDX Error (Falling back to mock):', error);
     return getMockCDX(url);
   }
 };
 
 export const downloadSnapshotContent = async (waybackUrl: string): Promise<string> => {
-    if (isDemoMode()) {
-        return "<html><body><h1>Mock Content</h1><p>This is mock HTML content for demo mode.</p></body></html>";
+  if (isDemoMode()) {
+    return '<html><body><h1>Mock Content</h1><p>This is mock HTML content for demo mode.</p></body></html>';
+  }
+
+  // Insert 'id_' into the timestamp to request the raw archived content without the Wayback toolbar.
+  // Example: /web/20230101000000/http://... -> /web/20230101000000id_/http://...
+  const rawUrl = waybackUrl.replace(/(\/web\/\d+)/, '$1id_');
+
+  const { corsProxy } = getSettings();
+  const isProxied = corsProxy && corsProxy.trim().length > 0;
+
+  try {
+    const res = await fetch(getProxiedUrl(rawUrl));
+    if (!res.ok) {
+      throw new Error(`Failed to download content: ${res.statusText} (Status ${res.status})`);
     }
-
-    // Insert 'id_' into the timestamp to request the raw archived content without the Wayback toolbar.
-    // Example: /web/20230101000000/http://... -> /web/20230101000000id_/http://...
-    const rawUrl = waybackUrl.replace(/(\/web\/\d+)/, '$1id_');
-
-    const { corsProxy } = getSettings();
-    const isProxied = corsProxy && corsProxy.trim().length > 0;
-
-    try {
-        const res = await fetch(getProxiedUrl(rawUrl));
-        if (!res.ok) {
-            throw new Error(`Failed to download content: ${res.statusText} (Status ${res.status})`);
+    return await res.text();
+  } catch (e: any) {
+    // Check for typical CORS/Network errors
+    if (
+      !isProxied &&
+      (e.message.includes('NetworkError') ||
+        e.message.includes('Failed to fetch') ||
+        e.name === 'TypeError')
+    ) {
+      console.log('Direct fetch blocked by CORS. Attempting automatic fallback via AllOrigins...');
+      try {
+        // Fallback to a public proxy specifically for this operation to improve UX
+        // AllOrigins is good for simple text content
+        const fallbackUrl = `${PROXY_OPTIONS.ALL_ORIGINS}${encodeURIComponent(rawUrl)}`;
+        const resFallback = await fetch(fallbackUrl);
+        if (resFallback.ok) {
+          return await resFallback.text();
         }
-        return await res.text();
-    } catch (e: any) {
-         // Check for typical CORS/Network errors
-         if (!isProxied && (e.message.includes('NetworkError') || e.message.includes('Failed to fetch') || e.name === 'TypeError')) {
-             
-             console.log("Direct fetch blocked by CORS. Attempting automatic fallback via AllOrigins...");
-             try {
-                 // Fallback to a public proxy specifically for this operation to improve UX
-                 // AllOrigins is good for simple text content
-                 const fallbackUrl = `${PROXY_OPTIONS.ALL_ORIGINS}${encodeURIComponent(rawUrl)}`;
-                 const resFallback = await fetch(fallbackUrl);
-                 if (resFallback.ok) {
-                     return await resFallback.text();
-                 }
-             } catch (fallbackError) {
-                 console.error("Fallback proxy also failed", fallbackError);
-             }
-             
-             throw new Error("CORS Restriction: You must configure a CORS Proxy in Settings to download raw HTML content.");
-         }
-         throw e;
+      } catch (fallbackError) {
+        console.error('Fallback proxy also failed', fallbackError);
+      }
+
+      throw new Error(
+        'CORS Restriction: You must configure a CORS Proxy in Settings to download raw HTML content.'
+      );
     }
+    throw e;
+  }
 };
 
-export const savePageNow = async (url: string, accessKey: string, secretKey: string): Promise<{ saved: boolean, message: string }> => {
+export const savePageNow = async (
+  url: string,
+  accessKey: string,
+  secretKey: string
+): Promise<{ saved: boolean; message: string }> => {
   if (isDemoMode()) {
-      return new Promise(resolve => setTimeout(() => resolve({ saved: true, message: "Mock Mode: URL successfully queued for capture." }), 1000));
+    return new Promise(resolve =>
+      setTimeout(
+        () => resolve({ saved: true, message: 'Mock Mode: URL successfully queued for capture.' }),
+        1000
+      )
+    );
   }
 
   if (!accessKey || !secretKey) {
-    throw new Error("Missing Credentials. Please configure API keys in Settings.");
+    throw new Error('Missing Credentials. Please configure API keys in Settings.');
   }
 
   try {
     // Note: SavePageNow is a POST request. Proxies often handle POST, but some simple ones might not.
     // We attempt to use the proxy here as well.
     const target = API_BASE.WAYBACK_SAVE;
-    
+
     const res = await fetch(getProxiedUrl(target), {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
-        'Authorization': `LOW ${accessKey}:${secretKey}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
+        Accept: 'application/json',
+        Authorization: `LOW ${accessKey}:${secretKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: `url=${encodeURIComponent(url)}&capture_all=1`
+      body: `url=${encodeURIComponent(url)}&capture_all=1`,
     });
-    
+
     if (res.ok) {
-       return { saved: true, message: "Capture request submitted." };
+      return { saved: true, message: 'Capture request submitted.' };
     } else {
-       const text = await res.text();
-       if (text.includes('<!DOCTYPE html>')) {
-           throw new Error(`Capture failed (Status ${res.status}). CORS Proxy may be required.`);
-       }
-       throw new Error(text || `Capture failed with status ${res.status}`);
+      const text = await res.text();
+      if (text.includes('<!DOCTYPE html>')) {
+        throw new Error(`Capture failed (Status ${res.status}). CORS Proxy may be required.`);
+      }
+      throw new Error(text || `Capture failed with status ${res.status}`);
     }
   } catch (e) {
     throw e;

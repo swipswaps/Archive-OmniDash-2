@@ -1,0 +1,177 @@
+/* Archive-OmniDash Accessibility Styles */
+/* Focus indicators, keyboard navigation, and WCAG 2.1 compliance */
+
+/* Skip to main content link (for screen readers and keyboard users) */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 1rem 1.5rem;
+  background-color: #14b8a6;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 0.5rem;
+}
+
+.skip-to-main:focus {
+  left: 1rem;
+  top: 1rem;
+}
+
+/* Global focus-visible styles for better keyboard navigation */
+*:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+}
+
+/* Remove default focus outline for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Enhanced focus for interactive elements */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1);
+}
+
+/* Input focus styles */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #14b8a6;
+  outline-offset: 0;
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+/* Ensure sufficient color contrast for text */
+.text-gray-400 {
+  color: #9ca3af; /* WCAG AA compliant on dark backgrounds */
+}
+
+.text-gray-500 {
+  color: #6b7280; /* Use sparingly, may not meet WCAG AA */
+}
+
+/* Loading state accessibility */
+[aria-busy="true"] {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Ensure icons don't interfere with screen readers */
+[aria-hidden="true"] {
+  pointer-events: none;
+}
+
+/* Live region styles (for status messages) */
+[role="status"],
+[role="alert"],
+[aria-live] {
+  position: relative;
+}
+
+/* Improve touch targets for mobile (minimum 44x44px) */
+@media (max-width: 768px) {
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  button,
+  a,
+  [role="button"] {
+    border: 2px solid currentColor;
+  }
+  
+  *:focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* Ensure disabled elements are clearly indicated */
+button:disabled,
+[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Improve visibility of focus indicators on dark backgrounds */
+.bg-gray-900 *:focus-visible,
+.bg-gray-950 *:focus-visible {
+  outline-color: #14b8a6;
+  outline-width: 2px;
+}
+
+/* Ensure clickable cards have proper hover and focus states */
+[role="button"]:hover {
+  cursor: pointer;
+}
+
+/* Toast notification accessibility */
+.toast-notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9999;
+  min-width: 300px;
+  max-width: 500px;
+}
+
+/* Error message styling for better visibility */
+[role="alert"] {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+}
+
+/* Success message styling */
+.success-message {
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+/* Error message styling */
+.error-message {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+

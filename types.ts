@@ -5,7 +5,7 @@ export interface IAMetadata {
   dir?: string;
   files_count?: number;
   item_size?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   files?: Array<{
     name: string;
     source: string;
@@ -61,7 +61,7 @@ export interface SavedSnapshot {
   mimetype: string;
 }
 
-export type ViewCountData = Record<string, any>;
+export type ViewCountData = Record<string, unknown>;
 
 export interface AppSettings {
   accessKey: string;

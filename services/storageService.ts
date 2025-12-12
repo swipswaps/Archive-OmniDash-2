@@ -26,7 +26,7 @@ class StorageService {
         resolve();
       };
 
-      request.onupgradeneeded = (e) => {
+      request.onupgradeneeded = e => {
         const db = (e.target as IDBOpenDBRequest).result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });

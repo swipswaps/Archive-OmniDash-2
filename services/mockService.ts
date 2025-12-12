@@ -6,26 +6,26 @@ export const getMockMetadata = (identifier: string): IAMetadata => ({
   metadata: {
     identifier: identifier,
     title: `Mock Item: ${identifier}`,
-    creator: "Internet Archive (Mock)",
-    date: "2023-01-01",
-    mediatype: "web",
+    creator: 'Internet Archive (Mock)',
+    date: '2023-01-01',
+    mediatype: 'web',
     description: "This is a mock response because 'Mock Mode' is enabled or the API call failed.",
-    subject: ["mock", "test", "archive"],
+    subject: ['mock', 'test', 'archive'],
   },
   files: [
-    { name: "main.pdf", source: "original", format: "PDF", size: "500KB" },
-    { name: "data.xml", source: "metadata", format: "XML", size: "2KB" }
+    { name: 'main.pdf', source: 'original', format: 'PDF', size: '500KB' },
+    { name: 'data.xml', source: 'metadata', format: 'XML', size: '2KB' },
   ],
-  files_count: 2
+  files_count: 2,
 });
 
 export const getMockSearchResults = (query: string, count = 10): IASearchResult[] => {
   return Array.from({ length: count }).map((_, i) => ({
     identifier: `mock-result-${query.replace(/\s+/g, '-')}-${i}`,
     title: `Result for "${query}" #${i + 1}`,
-    mediatype: i % 2 === 0 ? "texts" : "image",
-    date: "2023-05-20",
-    downloads: Math.floor(Math.random() * 5000)
+    mediatype: i % 2 === 0 ? 'texts' : 'image',
+    date: '2023-05-20',
+    downloads: Math.floor(Math.random() * 5000),
   }));
 };
 
@@ -34,11 +34,11 @@ export const getMockAvailability = (url: string): WaybackAvailability => ({
   archived_snapshots: {
     closest: {
       available: true,
-      status: "200",
-      timestamp: "20231015120000",
-      url: `http://web.archive.org/web/20231015120000/${url}`
-    }
-  }
+      status: '200',
+      timestamp: '20231015120000',
+      url: `http://web.archive.org/web/20231015120000/${url}`,
+    },
+  },
 });
 
 export const getMockCDX = (url: string): CDXRecord[] => {
@@ -52,10 +52,10 @@ export const getMockCDX = (url: string): CDXRecord[] => {
       urlkey: url,
       timestamp: timestamp,
       original: url,
-      mimetype: "text/html",
-      statuscode: i % 10 === 0 ? "404" : "200",
-      digest: "3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ",
-      length: "1234"
+      mimetype: 'text/html',
+      statuscode: i % 10 === 0 ? '404' : '200',
+      digest: '3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ',
+      length: '1234',
     };
   });
 };
