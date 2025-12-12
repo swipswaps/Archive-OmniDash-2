@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Globe, Camera, Calendar, CheckCircle, XCircle, AlertTriangle, ExternalLink, Loader2, Trash2, Search, BarChart3, Clock, X, Filter, Download, Database, Play, Settings as SettingsIcon, FileDown, Eye, Maximize2, Minimize2, Upload, Info } from 'lucide-react';
+import { Globe, Camera, Calendar, CheckCircle, XCircle, AlertTriangle, ExternalLink, Loader2, Trash2, Search, BarChart3, Clock, X, Filter, Download, Database, Play, Settings as SettingsIcon, FileDown, Eye, Maximize2, Minimize2, Upload, Info, Library } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { checkAvailability, savePageNow, fetchCDX, downloadSnapshotContent } from '../services/waybackService';
 import { storageService } from '../services/storageService';
@@ -192,7 +192,7 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
         };
 
         await storageService.saveSnapshot(snapshot);
-        alert("Success! Snapshot saved to the 'Saved Snapshots' tab.");
+        alert("Success! Snapshot saved to the 'Library'.");
     } catch (e: any) {
         setError(e.message || "Save Failed");
     } finally {
@@ -308,13 +308,13 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                     onClick={() => setMode('cdx')}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${mode === 'cdx' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
                 >
-                    <Database className="w-3.5 h-3.5" /> Index (CDX)
+                    <Clock className="w-3.5 h-3.5" /> History
                 </button>
                 <button 
                     onClick={() => setMode('saved')}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${mode === 'saved' ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
                 >
-                    <FileDown className="w-3.5 h-3.5" /> Saved
+                    <Library className="w-3.5 h-3.5" /> Library
                 </button>
            </div>
        </div>
@@ -335,13 +335,13 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                             placeholder={
                                 mode === 'available' ? "Enter URL to check availability (e.g. google.com)" :
                                 mode === 'save' ? "Enter URL to save (e.g. myblog.com)" :
-                                "Enter URL to search index (e.g. example.com)"
+                                "Enter URL to view history (e.g. example.com)"
                             }
                             className="w-full bg-gray-900 border border-gray-600 rounded-xl pl-4 pr-4 py-3 text-gray-100 focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder-gray-500 shadow-inner"
                         />
                     </div>
                     <Button type="submit" isLoading={loading} className="px-8 rounded-xl bg-indigo-600 hover:bg-indigo-500">
-                        {mode === 'available' ? 'Check' : mode === 'save' ? 'Save Now' : 'Search Index'}
+                        {mode === 'available' ? 'Check' : mode === 'save' ? 'Save Now' : 'Search History'}
                     </Button>
                 </form>
                 {error && (
@@ -480,7 +480,7 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                   </div>
               )}
 
-              {/* MODE: CDX */}
+              {/* MODE: CDX (History) */}
               {mode === 'cdx' && (
                   <div className="h-full flex flex-col">
                       {cdxData.length > 0 ? (
@@ -569,19 +569,19 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                       ) : (
                           !loading && !error && (
                             <div className="h-full flex flex-col items-center justify-center text-gray-500 opacity-60">
-                                <Database className="w-16 h-16 mb-4" />
-                                <p>Search the Index to see capture history.</p>
+                                <Clock className="w-16 h-16 mb-4" />
+                                <p>Search to see capture history and timeline.</p>
                             </div>
                           )
                       )}
                   </div>
               )}
 
-              {/* MODE: SAVED */}
+              {/* MODE: SAVED (Library) */}
               {mode === 'saved' && (
                   <div className="h-full flex flex-col">
                       <div className="flex justify-between items-center mb-4">
-                          <h3 className="text-lg font-bold text-white">Saved Snapshots</h3>
+                          <h3 className="text-lg font-bold text-white">Snapshot Library</h3>
                           <div className="flex gap-2">
                              <Button onClick={() => loadSavedSnapshots()} variant="secondary" className="h-8 text-xs">
                                  Refresh
@@ -594,9 +594,9 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                       
                       {savedSnapshots.length === 0 ? (
                           <div className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-gray-800/50 rounded-xl border border-gray-700 border-dashed">
-                              <FileDown className="w-12 h-12 mb-3 opacity-50" />
+                              <Library className="w-12 h-12 mb-3 opacity-50" />
                               <p>No snapshots saved locally.</p>
-                              <p className="text-xs mt-1">Use the "Available" or "Index" tab to download pages.</p>
+                              <p className="text-xs mt-1">Use the "Available" or "History" tab to download pages.</p>
                           </div>
                       ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-6">
