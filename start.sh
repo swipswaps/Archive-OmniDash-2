@@ -5,7 +5,7 @@
 set -e
 
 PROJECT_NAME="Archive-OmniDash"
-PROJECT_DIR="/home/owner/Documents/Archive-OmniDash"
+PROJECT_DIR="/home/owner/Documents/Archive-Omnidash-2"
 PORTS=(3001 3002)  # Ports this app uses
 PID_FILE="$PROJECT_DIR/.dev-server.pid"
 
@@ -124,18 +124,31 @@ main() {
     fi
     
     # Check if ports are occupied by other processes
-    for port in "${PORTS[@]}"; do
-        if check_port $port; then
-            local pid=$(get_port_pid $port)
-            local cmd=$(ps -p $pid -o cmd= 2>/dev/null || echo "unknown")
-            log_error "Port $port is already in use by another process!"
+    # Allow backend (3002) to be running, only check frontend (3001)
+    if check_port 3001; then
+        local pid=$(get_port_pid 3001)
+        local cmd=$(ps -p $pid -o cmd= 2>/dev/null || echo "unknown")
+        if [[ "$cmd" != *"vite"* ]] && [[ "$cmd" != *"Archive-OmniDash"* ]]; then
+            log_error "Port 3001 is already in use by another process!"
             echo -e "  PID: $pid"
             echo -e "  Command: $cmd"
             echo ""
             echo "Please free up the port or use a different port."
             exit 1
+        else
+            log_warning "Frontend already running on port 3001"
+            echo -e "  URL: ${GREEN}http://localhost:3001${NC}"
+            exit 0
         fi
-    done
+    fi
+
+    # Check if backend is running, if not warn user
+    if ! check_port 3002; then
+        log_warning "Backend (port 3002) is not running."
+        echo -e "  Credentials and authenticated features will not work."
+        echo -e "  To start backend: cd backend && npm start"
+        echo ""
+    fi
     
     log_success "All ports are available. Starting server..."
     start_server

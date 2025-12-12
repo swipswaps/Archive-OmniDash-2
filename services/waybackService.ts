@@ -15,10 +15,21 @@ const isDemoMode = () => !!getSettings().demoMode;
 
 const getProxiedUrl = (url: string) => {
   const { corsProxy } = getSettings();
-  if (corsProxy && corsProxy.trim().length > 0) {
-    return `${corsProxy}${url}`;
+  if (!corsProxy || corsProxy.trim().length === 0) {
+    return url;
   }
-  return url;
+
+  const proxy = corsProxy.trim();
+
+  // Different CORS proxies handle URLs differently
+  // allorigins.win requires the URL to be encoded
+  if (proxy.includes('allorigins')) {
+    return `${proxy}${encodeURIComponent(url)}`;
+  }
+
+  // corsproxy.io can handle raw URLs without encoding
+  // This preserves query parameters like collapse=none
+  return `${proxy}${url}`;
 };
 
 export const checkAvailability = async (url: string): Promise<WaybackAvailability> => {
