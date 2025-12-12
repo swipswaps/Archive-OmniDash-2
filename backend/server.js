@@ -15,8 +15,21 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3002;
 
+// CORS configuration for development and production
+const corsOptions = {
+  origin: [
+    'http://localhost:3001',
+    'http://localhost:3000',
+    'https://swipswaps.github.io',  // GitHub Pages
+    process.env.FRONTEND_URL  // Custom frontend URL
+  ].filter(Boolean),  // Remove undefined values
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Encryption setup
@@ -237,7 +250,8 @@ app.post('/api/proxy/archive', async (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Archive OmniDash Backend running on http://localhost:${PORT}`);
+  console.log(`🚀 Archive OmniDash Backend running on port ${PORT}`);
   console.log(`🔐 Encryption key: ${ENCRYPTION_KEY.substring(0, 8)}...`);
   console.log(`📁 Credentials file: ${CREDENTIALS_FILE}`);
+  console.log(`🌐 CORS enabled for: ${corsOptions.origin.filter(Boolean).join(', ')}`);
 });

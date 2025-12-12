@@ -1,0 +1,136 @@
+
+============================================================
+🚀 Phase 1 Test Suite with OCR Verification
+============================================================
+
+⚠️  IMPORTANT: All screenshots will be verified with OCR
+   No claims will be made without verification
+
+
+🌐 Opening browser to localhost:3001...
+
+============================================================
+🧪 TEST 1: Desktop Initial Load
+============================================================
+
+📸 Screenshot captured: 01_desktop_initial.png
+   Description: Desktop view - should show sidebar with navigation
+
+🔍 Verifying screenshot: test_screenshots/01_desktop_initial.png
+   OCR output saved to: test_screenshots/01_desktop_initial.png.txt
+✅ Desktop Initial Load VERIFIED
+   Found all expected: ['OmniDash', 'Home', 'Item Search', 'Deep Search', 'Wayback Machine', 'Settings']
+
+✅ Desktop Initial Load: All navigation items visible on desktop
+
+============================================================
+🧪 TEST 2: Mobile View - Hamburger Menu
+============================================================
+
+📱 Opening DevTools...
+   Pressing: F12
+
+📸 Screenshot captured: 02_devtools_opened.png
+   Description: DevTools opened - preparing for mobile emulation
+
+🔍 Verifying screenshot: test_screenshots/02_devtools_opened.png
+   OCR output saved to: test_screenshots/02_devtools_opened.png.txt
+❌ DevTools Opened VERIFICATION FAILED
+   Screenshot: test_screenshots/02_devtools_opened.png
+   Expected: ['Elements', 'Console']
+   Found: []
+   Missing: ['Elements', 'Console']
+   OCR preview: $2 Applications = ~9 rules.md - Archive-O... @ Google-chrome 2] Terminal ry ce 2025-3212 owner
+Archive-Omnid - i OH |
+
+rules.md - Archive-Omnidash-2- Visual Studio Code
+
+om
+
+© localhost:3001
+
+Google Chrome
+
+g 58 OmniDash Home APIVI
+Archive OmniDash
+
+A unified toolkit for the Internet Archive. Access
+
+⚠️ DevTools Open: DevTools might not be visible
+
+📱 Toggling device toolbar (Ctrl+Shift+M)...
+   Pressing: ctrl+shift+m
+
+📸 Screenshot captured: 03_mobile_view.png
+   Description: Mobile emulation - should show hamburger menu
+
+🔍 Verifying screenshot: test_screenshots/03_mobile_view.png
+   OCR output saved to: test_screenshots/03_mobile_view.png.txt
+✅ Mobile View VERIFIED
+   Found all expected: ['OmniDash']
+
+⚠️ Mobile Hamburger Menu: Could not verify hamburger menu via OCR (might be icon)
+
+============================================================
+🧪 TEST 3: Enhanced Error Handling
+============================================================
+
+🔧 Closing DevTools...
+   Pressing: F12
+
+🔍 Navigating to Item Search...
+   Clicking: Item Search button at (150, 280)
+
+📸 Screenshot captured: 04_item_search_page.png
+   Description: Item Search page - should show input field
+
+🔍 Verifying screenshot: test_screenshots/04_item_search_page.png
+   OCR output saved to: test_screenshots/04_item_search_page.png.txt
+❌ Item Search Page Load VERIFICATION FAILED
+   Screenshot: test_screenshots/04_item_search_page.png
+   Expected: ['Metadata', 'Identifier']
+   Found: []
+   Missing: ['Metadata', 'Identifier']
+   OCR preview: $< Applications = > rules.md - Archive-O... (€ Google-chrome
+
+rs)
+
+®
+=)
+
+x
+
+File Edit
+
+AUGMENT
+
+= Explain where w... % v
+
+42 6/6 | @ +3139 -102
+
+# Phase 1 Test Suite
+
+Let me fix the subprocess
+error:
+
+D Edited file tes. B1e
+
+© Terminal $ python3... & 2
+‘Command
+
+python3
+test_phasel_with_ocr.py
+zeal 
+
+❌ Item Search Navigation: Item Search page not loaded: ['Metadata', 'Identifier']
+
+📊 Report saved to: test_screenshots/ocr_verified_report.html
+
+============================================================
+📊 Test Summary
+============================================================
+Total Tests: 4
+✅ Passed: 1
+❌ Failed: 1
+⚠️  Warnings: 2
+============================================================

@@ -3,7 +3,15 @@
  * Communicates with the secure backend for credential storage
  */
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
+// Detect if running on GitHub Pages (no backend available)
+const isGitHubPages = typeof window !== 'undefined' && window.location.hostname.includes('github.io');
+
+// Backend URL configuration
+// - Production (GitHub Pages): Use environment variable or show error
+// - Development: Use localhost
+const BACKEND_URL = isGitHubPages
+  ? (import.meta.env.VITE_BACKEND_URL || null)  // Must be set for GitHub Pages
+  : (import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002');
 
 export interface CredentialsStatus {
   hasCredentials: boolean;
@@ -22,6 +30,10 @@ export const backendService = {
    * Save credentials to backend (encrypted server-side)
    */
   async saveCredentials(accessKey: string, secretKey: string): Promise<{ success: boolean; message: string }> {
+    if (!BACKEND_URL) {
+      throw new Error('Backend not available. Please deploy backend server separately or run locally.');
+    }
+
     const response = await fetch(`${BACKEND_URL}/api/credentials`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -40,6 +52,10 @@ export const backendService = {
    * Get credentials status (not the actual credentials)
    */
   async getCredentialsStatus(): Promise<CredentialsStatus> {
+    if (!BACKEND_URL) {
+      return { hasCredentials: false, accessKeyPreview: null, validated: false };
+    }
+
     const response = await fetch(`${BACKEND_URL}/api/credentials/status`);
     
     if (!response.ok) {
@@ -53,6 +69,10 @@ export const backendService = {
    * Delete credentials from backend
    */
   async deleteCredentials(): Promise<{ success: boolean; message: string }> {
+    if (!BACKEND_URL) {
+      throw new Error('Backend not available. Please deploy backend server separately or run locally.');
+    }
+
     const response = await fetch(`${BACKEND_URL}/api/credentials`, {
       method: 'DELETE'
     });
@@ -99,6 +119,10 @@ export const backendService = {
    * Validate credentials with Archive.org API
    */
   async validateCredentials(): Promise<ValidationResult> {
+    if (!BACKEND_URL) {
+      throw new Error('Backend not available. Credential validation requires backend server.');
+    }
+
     const response = await fetch(`${BACKEND_URL}/api/credentials/validate`, {
       method: 'POST'
     });
@@ -114,6 +138,10 @@ export const backendService = {
    * Check if backend is available
    */
   async healthCheck(): Promise<boolean> {
+    if (!BACKEND_URL) {
+      return false;
+    }
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/health`);
       return response.ok;
