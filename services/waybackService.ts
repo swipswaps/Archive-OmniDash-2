@@ -13,6 +13,27 @@ const getSettings = () => {
 
 const isDemoMode = () => !!getSettings().demoMode;
 
+/**
+ * Strips Wayback Machine toolbar and related scripts from archived HTML
+ * while preserving the Wayback-rewritten URLs for resources
+ */
+const stripWaybackToolbar = (html: string): string => {
+  // Remove Wayback toolbar div
+  html = html.replace(/<div[^>]*id="wm-ipp-base"[^>]*>[\s\S]*?<\/div>/gi, '');
+  html = html.replace(/<div[^>]*id="wm-ipp"[^>]*>[\s\S]*?<\/div>/gi, '');
+  html = html.replace(/<div[^>]*id="donato"[^>]*>[\s\S]*?<\/div>/gi, '');
+
+  // Remove Wayback toolbar scripts
+  html = html.replace(/<script[^>]*src="[^"]*\/_static\/[^"]*"[^>]*>[\s\S]*?<\/script>/gi, '');
+  html = html.replace(/<script[^>]*>[\s\S]*?wbinfo[\s\S]*?<\/script>/gi, '');
+  html = html.replace(/<link[^>]*href="[^"]*\/_static\/[^"]*"[^>]*>/gi, '');
+
+  // Remove Wayback analytics/tracking
+  html = html.replace(/<!-- BEGIN WAYBACK TOOLBAR INSERT -->[\s\S]*?<!-- END WAYBACK TOOLBAR INSERT -->/gi, '');
+
+  return html;
+};
+
 const getProxiedUrl = (url: string) => {
   const { corsProxy } = getSettings();
   if (!corsProxy || corsProxy.trim().length === 0) {
@@ -253,19 +274,25 @@ export const downloadSnapshotContent = async (waybackUrl: string): Promise<strin
     return '<html><body><h1>Mock Content</h1><p>This is mock HTML content for demo mode.</p></body></html>';
   }
 
-  // Insert 'id_' into the timestamp to request the raw archived content without the Wayback toolbar.
-  // Example: /web/20230101000000/http://... -> /web/20230101000000id_/http://...
-  const rawUrl = waybackUrl.replace(/(\/web\/\d+)/, '$1id_');
+  // Download the Wayback-rewritten version (WITHOUT id_) to preserve URL rewriting
+  // This ensures all resources (images, CSS, JS) load from the archive, not from live sites
+  // We'll strip the Wayback toolbar from the HTML after downloading
+  const rewrittenUrl = waybackUrl;
 
   const { corsProxy } = getSettings();
   const isProxied = corsProxy && corsProxy.trim().length > 0;
 
   try {
-    const res = await fetch(getProxiedUrl(rawUrl));
+    const res = await fetch(getProxiedUrl(rewrittenUrl));
     if (!res.ok) {
       throw new Error(`Failed to download content: ${res.statusText} (Status ${res.status})`);
     }
-    return await res.text();
+    let html = await res.text();
+
+    // Strip Wayback Machine toolbar and scripts
+    html = stripWaybackToolbar(html);
+
+    return html;
   } catch (e: any) {
     // Check for typical CORS/Network errors
     if (
@@ -279,7 +306,7 @@ export const downloadSnapshotContent = async (waybackUrl: string): Promise<strin
       // Try AllOrigins with timeout
       let allOriginsWorked = false;
       try {
-        const fallbackUrl = `${PROXY_OPTIONS.ALL_ORIGINS}${encodeURIComponent(rawUrl)}`;
+        const fallbackUrl = `${PROXY_OPTIONS.ALL_ORIGINS}${encodeURIComponent(rewrittenUrl)}`;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
@@ -287,12 +314,13 @@ export const downloadSnapshotContent = async (waybackUrl: string): Promise<strin
         clearTimeout(timeoutId);
 
         if (resFallback.ok) {
-          const text = await resFallback.text();
+          let html = await resFallback.text();
           // Check if AllOrigins returned an error message
-          if (!text.includes('Oops') && !text.includes('timeout') && !text.includes('error')) {
+          if (!html.includes('Oops') && !html.includes('timeout') && !html.includes('error')) {
             console.log('✅ Content download successful via AllOrigins');
             allOriginsWorked = true;
-            return text;
+            // Strip Wayback toolbar before returning
+            return stripWaybackToolbar(html);
           } else {
             console.warn('AllOrigins returned error message, trying corsproxy.io...');
           }
@@ -304,11 +332,13 @@ export const downloadSnapshotContent = async (waybackUrl: string): Promise<strin
       // If AllOrigins failed, try corsproxy.io
       if (!allOriginsWorked) {
         try {
-          const corsProxyUrl = `${PROXY_OPTIONS.CORS_PROXY_IO}${rawUrl}`;
+          const corsProxyUrl = `${PROXY_OPTIONS.CORS_PROXY_IO}${rewrittenUrl}`;
           const resCorsProxy = await fetch(corsProxyUrl);
           if (resCorsProxy.ok) {
             console.log('✅ Content download successful via corsproxy.io');
-            return await resCorsProxy.text();
+            let html = await resCorsProxy.text();
+            // Strip Wayback toolbar before returning
+            return stripWaybackToolbar(html);
           }
         } catch (corsProxyError) {
           console.error('corsproxy.io also failed:', corsProxyError);
