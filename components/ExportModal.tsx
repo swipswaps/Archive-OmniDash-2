@@ -38,7 +38,18 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, data }) => {
   const stripHtmlTags = (html: string) => {
     const tmp = document.createElement('DIV');
     tmp.innerHTML = html;
-    return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+
+    // Remove script tags, style tags, and other non-content elements
+    const scripts = tmp.querySelectorAll('script, style, noscript, iframe');
+    scripts.forEach(el => el.remove());
+
+    // Extract text content and clean up whitespace
+    let text = (tmp.textContent || tmp.innerText || '');
+
+    // Replace multiple spaces/newlines with single space
+    text = text.replace(/\s+/g, ' ').trim();
+
+    return text;
   };
 
   // Prepare data for export

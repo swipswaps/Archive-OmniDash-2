@@ -275,20 +275,48 @@ export const downloadSnapshotContent = async (waybackUrl: string): Promise<strin
         e.name === 'TypeError')
     ) {
       console.log('Direct fetch blocked by CORS. Attempting automatic fallback via AllOrigins...');
+
+      // Try AllOrigins with timeout
+      let allOriginsWorked = false;
       try {
-        // Fallback to a public proxy specifically for this operation to improve UX
-        // AllOrigins is good for simple text content
         const fallbackUrl = `${PROXY_OPTIONS.ALL_ORIGINS}${encodeURIComponent(rawUrl)}`;
-        const resFallback = await fetch(fallbackUrl);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+        const resFallback = await fetch(fallbackUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
         if (resFallback.ok) {
-          return await resFallback.text();
+          const text = await resFallback.text();
+          // Check if AllOrigins returned an error message
+          if (!text.includes('Oops') && !text.includes('timeout') && !text.includes('error')) {
+            console.log('✅ Content download successful via AllOrigins');
+            allOriginsWorked = true;
+            return text;
+          } else {
+            console.warn('AllOrigins returned error message, trying corsproxy.io...');
+          }
         }
-      } catch (fallbackError) {
-        console.error('Fallback proxy also failed', fallbackError);
+      } catch (fallbackError: any) {
+        console.warn(`AllOrigins timed out or failed (${fallbackError.message}), trying corsproxy.io...`);
+      }
+
+      // If AllOrigins failed, try corsproxy.io
+      if (!allOriginsWorked) {
+        try {
+          const corsProxyUrl = `${PROXY_OPTIONS.CORS_PROXY_IO}${rawUrl}`;
+          const resCorsProxy = await fetch(corsProxyUrl);
+          if (resCorsProxy.ok) {
+            console.log('✅ Content download successful via corsproxy.io');
+            return await resCorsProxy.text();
+          }
+        } catch (corsProxyError) {
+          console.error('corsproxy.io also failed:', corsProxyError);
+        }
       }
 
       throw new Error(
-        'CORS Restriction: You must configure a CORS Proxy in Settings to download raw HTML content.'
+        'CORS Restriction: Unable to download content. All proxies failed. Try configuring a CORS Proxy in Settings.'
       );
     }
     throw e;
