@@ -121,14 +121,327 @@ npm run dev        # Direct Vite (no protection)
 5. Test screen reader compatibility (NVDA/VoiceOver)
 6. Test on mobile (touch targets, responsive layout)
 
-### Selenium Testing Standards (MANDATORY - NO EXCEPTIONS)
+### Testing Methodology: How to Verify Code Fixes (MANDATORY)
+
+**THE COMPLETE TESTING WORKFLOW:**
+
+When user asks you to fix code and verify it works, follow this EXACT process:
+
+#### Phase 1: Make Code Changes
+1. Understand the issue from user description
+2. Use codebase-retrieval to find relevant code
+3. Make the fix using str-replace-editor
+4. Rebuild: `npm run build` or equivalent
+5. **DO NOT claim success yet**
+
+#### Phase 2: Automated Testing with Selenium
+Use Selenium to programmatically interact with the app:
+
+```python
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import time
+
+driver = webdriver.Firefox()  # Visible browser, NOT headless
+driver.maximize_window()
+
+try:
+    # Navigate through the UI
+    driver.get("http://localhost:3001/Archive-OmniDash-2/")
+    time.sleep(5)
+
+    # Click elements (use correct selectors from codebase)
+    btn = driver.find_element(By.CSS_SELECTOR, "button[aria-label='...']")
+    btn.click()
+
+    # Take screenshots at each step
+    driver.save_screenshot('selenium_screenshots/step1.png')
+
+    # Extract data from page
+    rows = driver.find_elements(By.CSS_SELECTOR, "table tbody tr")
+
+    # Analyze results
+    # Print findings to user
+
+finally:
+    driver.quit()
+```
+
+**Selenium is for:** Automated navigation, clicking, form filling, data extraction
+
+#### Phase 3: Visual Verification with User's Actual Browser
+
+**CRITICAL:** Selenium creates its OWN browser instance. The user is looking at a DIFFERENT browser window!
+
+To see what the USER sees, use xdotool + scrot + OCR:
+
+```bash
+# Find user's actual Firefox window
+FIREFOX_WIN=$(xdotool search --name "Archive OmniDash" | head -1)
+
+# Activate it
+xdotool windowactivate $FIREFOX_WIN
+sleep 1
+
+# Screenshot it
+scrot -u user_browser.png
+
+# OCR it
+tesseract user_browser.png user_browser 2>/dev/null
+
+# Show user what you see
+cat user_browser.txt
+```
+
+**Tools and Their Purposes:**
+- **Selenium**: Automated browser control (clicking, typing, extracting data)
+- **xdotool**: Find and control user's actual window
+- **scrot**: Screenshot user's actual window (`scrot -u` = active window)
+- **ImageMagick (import)**: Alternative screenshot tool (use scrot instead, more reliable)
+- **tesseract**: OCR to read text from screenshots
+- **opencv**: Image analysis (pixel comparison, visual regression testing)
+- **Playwright**: Alternative to Selenium (can also be used)
+
+#### Phase 4: Verification Protocol
+
+**MANDATORY steps before claiming fix works:**
+
+1. ✅ Run Selenium test to navigate and extract data
+2. ✅ Take screenshot of user's actual browser window
+3. ✅ Run OCR on screenshot
+4. ✅ Show OCR output to user
+5. ✅ Analyze the data (e.g., check if timestamps vary)
+6. ✅ Show analysis results to user
+7. ✅ Ask user to confirm they see the same thing
+8. ✅ Only after user confirms, claim success
 
 **CRITICAL RULES:**
 1. **NEVER guess what is on screen** - Always use OCR or element inspection
 2. **NEVER make claims without verification** - OCR or Selenium element verification required
 3. **ALWAYS use Selenium for browser control** - NOT xdotool (unreliable window focus)
-4. **ALWAYS share screenshots with user** - Embedded in HTML reports with OCR text
+4. **ALWAYS share screenshots with user** - Show file paths and OCR excerpts
 5. **GUESSING IS NOT ACCEPTABLE** - Verify everything
+6. **NEVER claim fix is complete without user verification** - User must confirm they see the fix working
+7. **NEVER skip verification steps** - If you promise to screenshot/test, DO IT before claiming success
+
+**EVASION PREVENTION (CRITICAL - USER FRUSTRATION ISSUE):**
+
+The LLM has a pattern of evading verification requests. This is FORBIDDEN.
+
+**Common Evasion Patterns (ALL FORBIDDEN):**
+1. ❌ Promising to screenshot/test, then claiming success without doing it
+2. ❌ Saying "the fix is deployed, please refresh and test" without YOU testing first
+3. ❌ Jumping from "I will verify" to "it's fixed" without showing verification
+4. ❌ Making code changes and assuming they work without running them
+5. ❌ Encountering an error in testing, then claiming success anyway
+6. ❌ Taking screenshots but not showing them to the user
+7. ❌ Running OCR but not sharing the OCR output with the user
+8. ❌ Saying "I tested it" without showing the test results
+9. ❌ Claiming "the issue is fixed" when user explicitly says it's not
+10. ❌ Moving on to documentation/commits before verification is complete
+11. ❌ **CRITICAL: Apologizing instead of immediately fixing rules.md when user says to**
+12. ❌ **CRITICAL: Breaking working features when making changes (REGRESSIONS)**
+
+**MANDATORY Verification Protocol:**
+1. ✅ If you promise to test/screenshot, DO IT before saying anything else
+2. ✅ Show EVERY screenshot to the user (file path + key OCR excerpts)
+3. ✅ Show EVERY test result to the user (timestamps, counts, patterns)
+4. ✅ If test fails/errors, ACKNOWLEDGE IT and debug, don't skip ahead
+5. ✅ If user says "it's not working", BELIEVE THEM and investigate
+6. ✅ Complete ALL promised steps before claiming success
+7. ✅ Ask user to confirm they see the fix working before moving on
+8. ✅ If you can't verify, SAY SO - don't pretend you did
+
+**REGRESSION PREVENTION PROTOCOL (CRITICAL):**
+
+When user asks to fix a UI issue (e.g., "make labels more readable"):
+
+**BEFORE making ANY code changes:**
+1. ✅ Use `view` to see the ENTIRE component file, not just the function
+2. ✅ Use codebase-retrieval to understand what the component does
+3. ✅ Identify EXACTLY what needs to change (e.g., XAxis properties)
+4. ✅ Verify your change won't remove or break existing features
+5. ✅ Make MINIMAL changes - only what's needed to fix the issue
+
+**AFTER making code changes:**
+1. ✅ Rebuild: `npm run build`
+2. ✅ Use Selenium to navigate to the feature
+3. ✅ Verify the feature still EXISTS (e.g., chart renders)
+4. ✅ Use xdotool + scrot + OCR to check user's actual browser
+5. ✅ Verify BOTH: (a) old feature works, (b) new fix applied
+6. ✅ Show user the OCR/screenshot proving both work
+7. ✅ Ask user to confirm
+
+**Example of REGRESSION:**
+- User: "timeline dates are squeezed together"
+- Bad LLM: Changes XAxis, accidentally removes entire chart
+- Good LLM: Views full component, changes only XAxis interval/angle, verifies chart still renders
+
+**If user says "you removed the working feature":**
+1. ✅ Immediately view the file to see what you changed
+2. ✅ Identify what was removed/broken
+3. ✅ Fix it by restoring the removed code
+4. ✅ Update rules.md with specific prevention rule
+5. ✅ THEN verify with user's browser
+
+**When User Says "STOP":**
+- Immediately stop current action
+- Read what user is pointing out
+- Acknowledge the specific issue they raised
+- Address THAT issue, not what you think the issue is
+
+**When User Mentions Something (e.g., "the export modal"):**
+- ❌ DO NOT assume it's currently open/visible
+- ✅ FIRST: Look at user's actual window with xdotool + scrot + OCR
+- ✅ VERIFY the current state before taking action
+- ✅ If user says "check again", it means your previous claim was WRONG
+
+**When Debugging Browser Issues:**
+- ❌ DO NOT use Selenium to create a new browser instance
+- ✅ Use xdotool to find user's actual Firefox window
+- ✅ Use xdotool to press F12 to open DevTools
+- ✅ Use xdotool to click Console tab
+- ✅ Screenshot and OCR the console to see errors
+- ✅ If user provides console logs, READ THEM CAREFULLY
+- ✅ Look for error patterns (CORS, fetch failures, etc.)
+- ✅ Review chat logs if user mentions "you had this working before"
+
+**When Code Changes Don't Take Effect:**
+- ❌ DO NOT assume Ctrl+Shift+R clears JavaScript cache
+- ✅ Check if console logs match the new code (e.g., "via corsproxy.io")
+- ✅ If old code is running, browser cached the JavaScript modules
+- ✅ Tell user to close the tab completely and open a new one
+- ✅ Or tell user to use Ctrl+F5 or clear cache manually
+- ✅ Verify the dist/ files contain the new code with grep
+- ✅ Check dev server is serving the new build (restart if needed)
+
+## CRITICAL: Why CDX API Stopped Working (Dec 13, 2025)
+
+**What Worked Before (chatLog line 3894-3938):**
+- AllOrigins proxy (`https://api.allorigins.win/raw?url=...`) was functioning
+- Returned real CDX JSON data
+- Got 1151 records with varying timestamps (19991012112003, 20000208035046, etc.)
+
+**What Changed:**
+- AllOrigins started returning HTTP 408 timeout with body: "Oops... Request Timeout."
+- Content-type: `text/plain;charset=UTF-8` (not application/json)
+- But sometimes returns HTTP 200 with content-type: application/json and EMPTY or INVALID JSON body
+- This passes initial validation but fails JSON parsing
+- Falls back to mock data (200 records, all timestamps ending in 120000)
+
+**The Fix (Self-Healing Proxy Fallback):**
+1. Try AllOrigins first
+2. Check res.ok AND content-type AND actually parse the JSON to validate
+3. If AllOrigins returns error message or invalid JSON, immediately try corsproxy.io
+4. If corsproxy.io fails, throw error (don't silently fall back to mock data)
+5. This makes the code robust to external proxy failures
+
+**Code Location:** `services/waybackService.ts` lines 138-180
+
+**Testing:** After rebuild, hard refresh browser and check console for:
+- "AllOrigins returned invalid JSON, trying corsproxy.io..."
+- "✅ CORS fallback successful via corsproxy.io"
+- Should see 1000+ records instead of 200
+
+**How to Actually Look at User's Browser (PROVEN METHOD):**
+
+When user says "LOOK AT THE OPEN FIREFOX WINDOW", do this EXACT sequence:
+
+```bash
+# 1. Find the user's actual Firefox window by name
+FIREFOX_WIN=$(xdotool search --name "Archive OmniDash" | head -1)
+
+# 2. Activate it (bring to front)
+xdotool windowactivate $FIREFOX_WIN
+
+# 3. Wait for window to activate
+sleep 1
+
+# 4. Screenshot using scrot -u (active window)
+scrot -u user_firefox_screenshot.png
+
+# 5. OCR it
+tesseract user_firefox_screenshot.png user_firefox_screenshot 2>/dev/null
+
+# 6. Show FULL OCR output to user
+cat user_firefox_screenshot.txt
+```
+
+**DO NOT:**
+- ❌ Use Selenium's window (that's a different browser instance)
+- ❌ Use `import -window` (has issues)
+- ❌ Assume what's on screen without OCR
+- ❌ Show only first 100 lines if user needs to see timestamps
+
+**DO:**
+- ✅ Use xdotool to find user's actual window
+- ✅ Use scrot -u for screenshot
+- ✅ Show complete OCR output
+- ✅ If user says scroll, use: `xdotool key Page_Down`
+
+**Correct Pattern:**
+```
+User: "Look at the Firefox window"
+LLM: [Runs xdotool + scrot + OCR commands above]
+LLM: "Here's what I see in YOUR Firefox window:
+     - Screenshot: user_firefox_screenshot.png
+     - OCR output shows:
+       [paste ACTUAL OCR text]
+     - I can see: [describe what OCR shows]
+
+     What should I look for?"
+```
+
+**Incorrect Pattern (FORBIDDEN):**
+```
+User: "Look at the Firefox window"
+LLM: "I'll take a screenshot..."
+[Uses Selenium or wrong window]
+LLM: "I see the page loaded. The fix is working!"
+[User: "No it's not, you're not looking at MY window"]
+```
+
+### Complete Example: How We Fixed the CORS and Timeline Issues
+
+**Issue 1: CORS Fallback Not Working (Timestamps All Ending in 120000)**
+
+1. **User reported**: All timestamps end in 120000 (mock data)
+2. **Initial mistake**: Made code changes, claimed "fix deployed, please test"
+3. **User correction**: "You didn't test it, you're evading"
+4. **Proper approach**:
+   - Used Selenium to navigate: Click Wayback → History → Enter URL → Search
+   - Used xdotool to find user's actual Firefox window
+   - Used scrot to screenshot user's window
+   - Used tesseract OCR to read what user sees
+   - Found "1151 records found" in OCR
+   - Scrolled down with `xdotool key Page_Down`
+   - OCR showed varying timestamps (112003, 035046, 070629, etc.)
+   - **Asked user to confirm**: "Can you confirm you see these varying timestamps?"
+   - **User confirmed**: "yes"
+   - **Only then claimed success**
+
+**Issue 2: Timeline Chart Year Labels Squeezed/Unreadable**
+
+1. **User reported**: "timeline dates are squeezed together and hard to read"
+2. **Proper approach**:
+   - Used xdotool to screenshot user's window
+   - OCR showed garbled text where timeline should be
+   - Used codebase-retrieval to find timeline chart code
+   - Found XAxis with `interval={0}` forcing all 25+ year labels to display
+   - Made fix: `interval="preserveStartEnd"`, `angle={-45}`, increased height
+   - Rebuilt: `npm run build`
+   - **Told user to refresh browser**
+   - **User confirmed**: "that works"
+   - **Only then claimed success**
+
+**Key Lessons:**
+1. ✅ Always verify with user's actual browser window (xdotool + scrot + OCR)
+2. ✅ Show OCR output to user before making claims
+3. ✅ Ask user to confirm they see the fix
+4. ✅ Only claim success after user confirmation
+5. ✅ If user says "stop" or "you're evading", immediately acknowledge and correct
+6. ✅ Rebuild after code changes: `npm run build`
+7. ✅ Tell user to hard refresh: Ctrl+Shift+R
 
 **Proper Method: Selenium + OCR + Screenshots**
 

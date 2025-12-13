@@ -136,15 +136,69 @@ export const fetchCDX = async (url: string, limit: number = 10000): Promise<CDXR
           fetchError.name === 'TypeError')
       ) {
         console.log('Direct CDX fetch blocked by CORS. Attempting automatic fallback via AllOrigins...');
+
+        // Try AllOrigins with timeout
+        let allOriginsWorked = false;
         try {
           const fallbackUrl = `${PROXY_OPTIONS.ALL_ORIGINS}${encodeURIComponent(api)}`;
-          res = await fetch(fallbackUrl);
-          console.log('✅ CORS fallback successful');
-        } catch (fallbackError) {
-          console.error('Fallback proxy also failed:', fallbackError);
-          throw new Error(
-            'CORS Error: Unable to reach CDX API. Try configuring a CORS Proxy in Settings.'
-          );
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+          res = await fetch(fallbackUrl, { signal: controller.signal });
+          clearTimeout(timeoutId);
+
+          // Check if AllOrigins returned valid JSON response
+          const contentType = res.headers.get('content-type');
+          let isValidResponse = res.ok && contentType && contentType.includes('application/json');
+
+          // If response looks valid, try to parse it to confirm
+          if (isValidResponse) {
+            try {
+              const testText = await res.clone().text();
+              if (testText.includes('Oops') || testText.includes('timeout') || testText.includes('error')) {
+                console.warn('AllOrigins returned error message, trying corsproxy.io...');
+                isValidResponse = false;
+              } else {
+                // Try parsing to confirm it's valid JSON
+                JSON.parse(testText);
+                console.log('✅ CORS fallback successful via AllOrigins');
+                allOriginsWorked = true;
+              }
+            } catch (e) {
+              console.warn('AllOrigins returned invalid JSON, trying corsproxy.io...');
+              isValidResponse = false;
+            }
+          }
+
+          if (!isValidResponse && !allOriginsWorked) {
+            console.warn(`AllOrigins failed (status: ${res.status}, content-type: ${contentType}), trying corsproxy.io...`);
+            const corsProxyUrl = `${PROXY_OPTIONS.CORS_PROXY_IO}${api}`;
+            res = await fetch(corsProxyUrl);
+
+            if (!res.ok) {
+              throw new Error(`All proxies failed. AllOrigins: invalid response, corsproxy.io: ${res.status}`);
+            }
+            console.log('✅ CORS fallback successful via corsproxy.io');
+          }
+        } catch (fallbackError: any) {
+          // If AllOrigins timed out or failed, try corsproxy.io
+          if (!allOriginsWorked) {
+            console.warn(`AllOrigins timed out or failed (${fallbackError.message}), trying corsproxy.io...`);
+            try {
+              const corsProxyUrl = `${PROXY_OPTIONS.CORS_PROXY_IO}${api}`;
+              res = await fetch(corsProxyUrl);
+
+              if (!res.ok) {
+                throw new Error(`All proxies failed. AllOrigins: timeout, corsproxy.io: ${res.status}`);
+              }
+              console.log('✅ CORS fallback successful via corsproxy.io');
+            } catch (corsProxyError) {
+              console.error('All proxies failed:', corsProxyError);
+              throw new Error(
+                'CORS Error: Unable to reach CDX API. Try configuring a CORS Proxy in Settings.'
+              );
+            }
+          }
         }
       } else {
         throw fetchError;
@@ -159,10 +213,18 @@ export const fetchCDX = async (url: string, limit: number = 10000): Promise<CDXR
     if (!contentType || !contentType.includes('application/json')) {
       const text = await res.text();
       if (text.length === 0) return [];
+      console.error('Non-JSON response received:', text.substring(0, 200));
       throw new Error('Received non-JSON response from CDX API');
     }
 
-    const json = await res.json();
+    let json;
+    try {
+      json = await res.json();
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      throw new Error('Failed to parse CDX API response as JSON');
+    }
+
     if (Array.isArray(json) && json.length > 1) {
       return json.slice(1).map((row: string[]) => ({
         urlkey: row[0],

@@ -1,0 +1,32 @@
+Archive OmniDash - Interne: x +
+
+localh
+Home Configuration
+
+Manage your Internet Archive credentials and application preferences:
+
+Item Search
+
+Deep Search o Demo Mode
+
+Enable mock data to test the UI without making real API calls. Useful if APIs a1
+Wayback Machine blocked
+
+View Analytics
+© Connectivity
+
+8 Settings
+(0) Search failing? Internet Archive APIs block direct browser requests (CORS).
+5 To fix this, you must use a proxy.
+
+CORS Proxy URL Prefix
+
+Z% Auto-Fill
+
+& API Credentials
+
+© A Backend Unavailable
+
+54
+The secure backend server is not running. Credentials cannot be saved.
+@ Start the backend: cd backend && npm start

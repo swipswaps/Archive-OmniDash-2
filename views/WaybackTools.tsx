@@ -544,7 +544,7 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
               {cdxData.length > 0 ? (
                 <div className="flex-1 flex flex-col space-y-6">
                   {/* Chart Section */}
-                  <div className="h-48 bg-gray-800 rounded-xl border border-gray-700 p-4 relative">
+                  <div className="h-64 bg-gray-800 rounded-xl border border-gray-700 p-4 relative">
                     <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
                       <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                         Capture Frequency
@@ -554,7 +554,7 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                       </span>
                     </div>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={getCdxStats()} margin={{ top: 30, right: 10, left: 0, bottom: 0 }}>
+                      <BarChart data={getCdxStats()} margin={{ top: 30, right: 10, left: 0, bottom: 50 }}>
                         <Tooltip
                           cursor={{ fill: '#374151', opacity: 0.4 }}
                           contentStyle={{
@@ -569,7 +569,10 @@ const WaybackTools: React.FC<Props> = ({ settings, onChangeView }) => {
                         <XAxis
                           dataKey="year"
                           tick={{ fontSize: 10, fill: '#9ca3af' }}
-                          interval={0}
+                          interval="preserveStartEnd"
+                          angle={-45}
+                          textAnchor="end"
+                          height={60}
                           stroke="#4b5563"
                         />
                         <YAxis
