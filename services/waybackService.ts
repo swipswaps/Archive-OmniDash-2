@@ -121,7 +121,36 @@ export const fetchCDX = async (url: string, limit: number = 10000): Promise<CDXR
     // By NOT specifying collapse, we get all captures up to the limit
     const api = `${API_BASE.CDX}?url=${encodedUrl}&output=json&limit=${limit}&fl=urlkey,timestamp,original,mimetype,statuscode,digest,length`;
 
-    const res = await fetch(getProxiedUrl(api));
+    const { corsProxy } = getSettings();
+    const isProxied = corsProxy && corsProxy.trim().length > 0;
+
+    let res;
+    try {
+      res = await fetch(getProxiedUrl(api));
+    } catch (fetchError: any) {
+      // Smart CORS fallback: If direct fetch fails with CORS/network error, auto-retry with proxy
+      if (
+        !isProxied &&
+        (fetchError.message.includes('NetworkError') ||
+          fetchError.message.includes('Failed to fetch') ||
+          fetchError.name === 'TypeError')
+      ) {
+        console.log('Direct CDX fetch blocked by CORS. Attempting automatic fallback via AllOrigins...');
+        try {
+          const fallbackUrl = `${PROXY_OPTIONS.ALL_ORIGINS}${encodeURIComponent(api)}`;
+          res = await fetch(fallbackUrl);
+          console.log('✅ CORS fallback successful');
+        } catch (fallbackError) {
+          console.error('Fallback proxy also failed:', fallbackError);
+          throw new Error(
+            'CORS Error: Unable to reach CDX API. Try configuring a CORS Proxy in Settings.'
+          );
+        }
+      } else {
+        throw fetchError;
+      }
+    }
+
     if (!res.ok) {
       throw new Error(`CDX fetch failed with status: ${res.status}`);
     }
@@ -146,8 +175,13 @@ export const fetchCDX = async (url: string, limit: number = 10000): Promise<CDXR
       }));
     }
     return [];
-  } catch (error) {
-    console.error('CDX Error (Falling back to mock):', error);
+  } catch (error: any) {
+    console.error('CDX Error:', error);
+    // Only fall back to mock if it's a real error, not just CORS
+    if (error.message && error.message.includes('CORS Error')) {
+      throw error; // Propagate CORS errors to UI
+    }
+    console.warn('Falling back to mock data due to error');
     return getMockCDX(url);
   }
 };

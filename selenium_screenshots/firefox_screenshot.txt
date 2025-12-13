@@ -1,0 +1,61 @@
+J File Edit Selection - €° Q Archive-Omnidash-2
+
+augment-guidelines ® rules.md x aro
+
+AUGMENT S
++
+
+= Explain where w... ‘augment > # rules.md > se # Archive-OmniDash-2 Workspace Rules > s ## Code Review Checklist
+1 # Archive-OmniDash-2 Workspace Rules
+
+481  ## Code Review Checklist
+409 > MODLLE LESpONSiVe (LESLEU al /OBpx DLEAKpOLNL)
+
+(ts)
+Q
+® timestamps but here |) 490 - Documentation updated
+P
+
+32 6/6 | (413672 -231
+
+y 491 - No security vulnerabilities introduced
+492 - Process management scripts work
+
+You're absolutely right. Let me 493 App starts/stops cleanly
+do this correctly - find the 494
+Firefox window specifically foo ## Notes oe
+endetna paEarcaeEen 496 - **Production ready**: Code quality rated 9/10
++ 497 - **WCAG compliant**: Level AA accessibility achieved
+
+oS 498 - **Smart CORS fallback**: Handles Internet Archive API
+
+© Terminal $ xdotool .. & « . *
+limitations
+
+ED 499 - **Secure backend**: AES-256-GCM encrypted credential storage
+
+©) Terminal $ FIREFOX... G ©
+
+500
+© Terminal $ FIREFOX
+
+Terminal $ cd /home... &
+
+© Terminal $ cd /home/... %
+
+PROBLEMS OUTPUT DEBUGCONSOLE TERMINAL PORTS AUGMENTNEXTEDIT = +} v
+
+© [owner@192.168.1.135-20251213-084945 Archive-Onnidash-2]$ cd /home/own ” ied
+
+er/Documents /Archive-Omnidash-2/selenium_screenshots && display test_1 _ &3Augment
+
+homepage. png & £3 Augment
+@ BB I GaArchiveom ¢ [1] 36549 "3 Augment
+[owner@192.168.1.135-20251213-084946 Archive-Omnidash-2]$ 0
+
+Instruct your Augment agent
+
+iS)
+| Ga =| =: +o
+
+x fgmains® @oAo © Jose Melendez (17 hours ago) Ln 494,Col1 Spaces:4 UTF-8 LF {} Markdown {23}Augment
