@@ -1,0 +1,25 @@
+- Interne! x
+
+oo
+
+Archive credentials with obvious junk — placeholder strings that
+should have failed immediately. Nothing changed. The app still
+reported that credentials were active. No warnings. No errors. Still
+green.
+
+That was the first crack.
+
+The reason became obvious once the backend response was
+inspected:
+
+// backend credential status
+return {
+hasCredentials: !!creds
+
+Authentication status wasn't authentication at all. It was a Boolean
+existence check — not a real API validation.
+
+The frontend simply reflected that value as:
+text
+
+Authenticated

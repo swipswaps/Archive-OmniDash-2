@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Database, BarChart3, Settings, Library, Home, Globe, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Database, BarChart3, Settings, Library, Home, Globe, Menu, X, BookOpen } from 'lucide-react';
 import { AppView } from '../types';
 
 interface SidebarProps {
@@ -15,6 +15,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) => {
     { id: AppView.SCRAPING, label: 'Deep Search', icon: Library },
     { id: AppView.WAYBACK, label: 'Wayback Machine', icon: Globe },
     { id: AppView.ANALYTICS, label: 'View Analytics', icon: BarChart3 },
+    { id: AppView.BLOG, label: 'Blog', icon: BookOpen },
     { id: AppView.SETTINGS, label: 'Settings', icon: Settings },
   ];
 

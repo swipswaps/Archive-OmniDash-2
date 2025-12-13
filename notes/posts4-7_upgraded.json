@@ -1,0 +1,69 @@
+{
+  "series": "Archive-OmniDash CDX Incident",
+  "author": "Archive-OmniDash Maintainer",
+  "entries": [
+    {
+      "id": "cdx-incident-01",
+      "title": "Everything Looked Green (Until It Wasn’t)",
+      "slug": "everything-looked-green-until-it-wasnt",
+      "date": "2025-12-13",
+      "status": "published",
+      "summary": "How fake confidence in credential status masked a deeper system failure.",
+      "content": "At first glance, Archive-OmniDash looked healthy.\n\nThe UI said Authenticated.\nThe credentials panel was green.\nSearch results appeared instantly.\nCharts rendered smoothly.\n\nIf you were skimming, you’d assume everything was wired up correctly.\n\nBut something felt off.\n\nWhile testing the app, I intentionally replaced valid Internet Archive credentials with obvious junk — placeholder strings that should have failed immediately. Nothing changed. The app still reported that credentials were active. No warnings. No errors. Still green.\n\nThat was the first crack.\n\nThe reason became obvious once the backend response was inspected:\n\n```ts\n// backend credential status\nreturn {\n  hasCredentials: !!creds\n}\n```\n\nAuthentication status wasn’t authentication at all. It was a Boolean existence check — not a real API validation.\n\nThe frontend simply reflected that value as:\n\n```text\nAuthenticated\n```\n\nThe UI wasn’t lying maliciously. It was just never asking the hard question.\n\nAt this point, Archive-OmniDash wasn’t broken in the obvious way. It was worse: it was confidently wrong."
+    },
+    {
+      "id": "cdx-incident-02",
+      "title": "The Search Results That Lied Perfectly",
+      "slug": "the-search-results-that-lied-perfectly",
+      "date": "2025-12-13",
+      "status": "published",
+      "summary": "When mock data quietly replaced real archive results — and nobody noticed.",
+      "content": "The next red flag came from the data itself.\n\nSearches against the Wayback Machine’s CDX API were returning results — hundreds of them. Charts filled in. Counts looked reasonable. Nothing crashed.\n\nBut the numbers were too neat.\n\nEvery result set capped at exactly 200 entries.\nEvery timestamp ended in `120000`.\nEvery chart looked eerily uniform.\n\nReal archive data is messy. This wasn’t.\n\nThe console logs insisted everything was fine:\n\n```text\nDirect CDX fetch blocked by CORS. Attempting automatic fallback via AllOrigins\n✅ CORS fallback successful\n```\n\nBut tracing the execution path showed what was actually happening.\n\nWhen the CDX request failed, the app silently substituted mock data:\n\n```ts\ncatch (err) {\n  return MOCK_CDX_RESPONSE\n}\n```\n\nWorse, the success message was logged *before* validating the response body.\n\nNothing looked broken because everything was pretending to work.\n\nAt this stage, Archive-OmniDash wasn’t showing errors — it was hiding them."
+    },
+    {
+      "id": "cdx-incident-03",
+      "title": "Why Our Tests Told Us the Wrong Story",
+      "slug": "why-our-tests-told-us-the-wrong-story",
+      "date": "2025-12-13",
+      "status": "published",
+      "summary": "How passing tests and screenshots still failed to prove anything.",
+      "content": "Naturally, I turned to tests for reassurance.\n\nSelenium runs produced screenshots. The logs looked clean. Assertions passed. Captions claimed mobile menus worked and error states rendered correctly.\n\nExcept… the screenshots didn’t match the claims.\n\nSome images showed a terminal window.\nOthers showed VS Code.\nSome didn’t show the app at all.\n\nThe tests were \"passing\" because they weren’t actually verifying anything meaningful.\n\nAt that point, a new rule was enforced:\n\n```text\nScreenshots without OCR are non-evidence\n```\n\nOnly screenshots that survived OCR text extraction could be treated as proof.\n\nOnce OCR was applied, earlier claims collapsed quickly. Features thought to be confirmed became unverified overnight.\n\nThis was the turning point.\n\nFrom here on, success would only be claimed *after validation*, not before."
+    },
+    {
+      "id": "cdx-incident-04",
+      "title": "The Proxy We Trusted Too Much",
+      "slug": "the-proxy-we-trusted-too-much",
+      "date": "2025-12-14",
+      "status": "published",
+      "summary": "How a third-party CORS proxy became a single point of silent failure.",
+      "content": "Once mock data was identified as the culprit, the obvious question followed: why was the app falling back in the first place?\n\nThe answer led straight to a public CORS proxy.\n\nDirect CDX requests were blocked by the browser, so the app relied on AllOrigins:\n\n```ts\nfetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(cdxUrl)}`)\n```\n\nAt the time of failure, AllOrigins behaved inconsistently. Some requests timed out. Others returned HTTP 200 with invalid JSON.\n\nFrom the browser’s perspective, the request succeeded. The app believed it too.\n\nBecause success was logged immediately, parsing failures only surfaced later — and were swallowed by mock fallback.\n\nThis wasn’t a single bug. It was a chain of assumptions.\n\nNone of them held."
+    },
+    {
+      "id": "cdx-incident-05",
+      "title": "Timeouts, Or Why Waiting Forever Is a Bug",
+      "slug": "timeouts-or-why-waiting-forever-is-a-bug",
+      "date": "2025-12-14",
+      "status": "published",
+      "summary": "The missing timeout that let failures masquerade as success.",
+      "content": "One detail kept repeating: requests that never clearly failed.\n\nThe original fetch logic had no timeout. That meant stalled proxies were treated as success.\n\nThe fix introduced an explicit boundary:\n\n```ts\nconst controller = new AbortController()\nsetTimeout(() => controller.abort(), 5000)\n\nfetch(url, { signal: controller.signal })\n```\n\nA request that takes too long isn’t slow — it’s failed.\n\nOnly after valid JSON was parsed would success be logged.\n\nThis changed everything. Failure became visible. Ambiguity disappeared.\n\nUncertainty, it turned out, was healthier than fake confidence."
+    },
+    {
+      "id": "cdx-incident-06",
+      "title": "The Moment Real Data Came Back",
+      "slug": "the-moment-real-data-came-back",
+      "date": "2025-12-15",
+      "status": "published",
+      "summary": "What it looked like when the CDX API finally returned genuine archive data again.",
+      "content": "After adding timeouts, validation, and proxy fallback, there was only one question left: did it actually work?\n\nThe answer wasn’t in the logs. It was in the numbers.\n\nBefore the fix:\n\n```text\nResults: 200\nTimestamp pattern: *****120000\n```\n\nAfter the fix:\n\n```text\nResults: ~1150\nTimestamps: non-uniform\n```\n\nThe charts lost their artificial symmetry. The data regained its messiness.\n\nFor the first time since the incident began, Archive-OmniDash was showing what the Internet Archive actually contained.\n\nThat confirmation couldn’t be faked — and that’s why it mattered."
+    },
+    {
+      "id": "cdx-incident-07",
+      "title": "What This Broke Changed Forever",
+      "slug": "what-this-broke-changed-forever",
+      "date": "2025-12-15",
+      "status": "published",
+      "summary": "How one quiet failure permanently changed how success is defined.",
+      "content": "This incident didn’t just fix a CDX bug. It rewired how correctness is judged.\n\nNew rules became permanent:\n\n```text\n- Logs are not evidence\n- Screenshots require OCR\n- Status indicators must map to real API state\n- Success is logged only after validation\n```\n\nGreen checkmarks became suspect. Passing tests became provisional.\n\nThe system stopped pretending — and started telling the truth, even when it was inconvenient.\n\nThat lesson will outlast this particular bug."
+    }
+  ]
+}

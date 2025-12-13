@@ -70,11 +70,22 @@ export interface AppSettings {
   corsProxy?: string;
 }
 
+export interface BlogEntry {
+  id: string;
+  title: string;
+  slug: string;
+  date: string;
+  status: string;
+  summary: string;
+  content: string;
+}
+
 export enum AppView {
   DASHBOARD = 'dashboard',
   METADATA = 'metadata',
   SCRAPING = 'scraping',
   ANALYTICS = 'analytics',
   WAYBACK = 'wayback',
+  BLOG = 'blog',
   SETTINGS = 'settings',
 }

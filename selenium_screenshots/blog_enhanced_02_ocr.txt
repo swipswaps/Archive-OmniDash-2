@@ -1,0 +1,32 @@
+© Archive OmniDash - Interne’ x
+
+#OB localho
+
+Blog
+
+05 OmniDash
+
+Archive-OmniDash CDX
+Home © Incident & Export = & Import
+
+Item Search
+Technical insights and lessons learned from building Archive-OmniDash
+
+Deep Search
+
+Wayback Machine 1 © Archive-OmniDash CDx Incident
+
+Everything Looked Green (Until It Wasn't)
+View Analytics
+How fake confidence in credential status masked a deeper system failure
+
+1 Blog
+Read article >
+
+Settings
+
+2 © Archive-OmniDash CDX Incident
+
+The Search Results That Lied Perfectly
+
+When mock data quietly replaced real archive results — and nobody noticed

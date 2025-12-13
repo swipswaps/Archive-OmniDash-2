@@ -643,20 +643,169 @@ export async function fetchCDX(
 
 ---
 
+# Part 8: The Preview Mystery - Blank Pages and Resource Loading (Dec 13, 2:45 PM)
+
+## The Problem Resurfaces
+
+After successfully fixing the CDX API timeout issues, the user reported a new problem:
+
+**User's report (chatLog_Archive-Omnidash-2_0009b.txt)**:
+> "preview of new saved pages is failing but previous saved pages works"
+
+The preview modal was showing blank pages or displaying the app's own index.html instead of the actual archived content.
+
+## The LLM's Investigation
+
+Following `.augment/rules.md`, the LLM used Selenium + xdotool + OCR to verify the actual browser state. The browser console revealed the root cause:
+
+**Console errors**:
+```
+GET https://sunelec.com/wp/wp-content/plugins/woocommerce/assets/js/jquery-blockui/jquery.blockUI.min.js?ver=2.70
+NS_ERROR_CORRUPTED_CONTENT
+
+GET https://sunelec.com/wp/wp-content/plugins/woocommerce/assets/js/frontend/add-to-cart.min.js?ver=3.9.2
+NS_ERROR_CORRUPTED_CONTENT
+```
+
+**The Diagnosis**: The iframe was trying to load resources from the **live website** (`sunelec.com`) instead of from the **Wayback Machine archive**, causing `NS_ERROR_CORRUPTED_CONTENT` errors.
+
+## The Root Cause
+
+In `services/waybackService.ts`, the `downloadSnapshotContent()` function was using the `id_` modifier to get "raw" content without the Wayback toolbar:
+
+<augment_code_snippet path="services/waybackService.ts" mode="EXCERPT">
+````typescript
+// OLD CODE (BROKEN)
+const rawUrl = waybackUrl.replace(/(\/web\/\d+)/, '$1id_');
+````
+</augment_code_snippet>
+
+**The Problem**: The `id_` modifier removes the Wayback toolbar BUT also removes Wayback's URL rewriting system. This caused the browser to attempt loading resources from original URLs (like `sunelec.com`) instead of from the archive.
+
+## The Solution
+
+**The Fix**: Download the **Wayback-rewritten version** (without `id_`) which has all URLs already rewritten to point to the Wayback Machine, then strip the toolbar using regex patterns.
+
+### Step 1: Add Helper Function to Strip Wayback Toolbar
+
+<augment_code_snippet path="services/waybackService.ts" mode="EXCERPT">
+````typescript
+const stripWaybackToolbar = (html: string): string => {
+  // Remove Wayback toolbar div
+  html = html.replace(/<div[^>]*id="wm-ipp-base"[^>]*>[\s\S]*?<\/div>/gi, '');
+  html = html.replace(/<div[^>]*id="wm-ipp"[^>]*>[\s\S]*?<\/div>/gi, '');
+  html = html.replace(/<div[^>]*id="donato"[^>]*>[\s\S]*?<\/div>/gi, '');
+
+  // Remove Wayback toolbar scripts
+  html = html.replace(/<script[^>]*src="[^"]*\/_static\/[^"]*"[^>]*>[\s\S]*?<\/script>/gi, '');
+  html = html.replace(/<script[^>]*>[\s\S]*?wbinfo[\s\S]*?<\/script>/gi, '');
+  html = html.replace(/<link[^>]*href="[^"]*\/_static\/[^"]*"[^>]*>/gi, '');
+
+  // Remove Wayback analytics/tracking
+  html = html.replace(/<!-- BEGIN WAYBACK TOOLBAR INSERT -->[\s\S]*?<!-- END WAYBACK TOOLBAR INSERT -->/gi, '');
+
+  return html;
+};
+````
+</augment_code_snippet>
+
+### Step 2: Modify downloadSnapshotContent()
+
+<augment_code_snippet path="services/waybackService.ts" mode="EXCERPT">
+````typescript
+export const downloadSnapshotContent = async (waybackUrl: string): Promise<string> => {
+  if (isDemoMode()) {
+    return '<html><body><h1>Mock Content</h1><p>This is mock HTML content for demo mode.</p></body></html>';
+  }
+
+  // Download the Wayback-rewritten version (WITHOUT id_) to preserve URL rewriting
+  // This ensures all resources (images, CSS, JS) load from the archive, not from live sites
+  // We'll strip the Wayback toolbar from the HTML after downloading
+  const rewrittenUrl = waybackUrl;
+
+  const { corsProxy } = getSettings();
+  const isProxied = corsProxy && corsProxy.trim().length > 0;
+
+  try {
+    const res = await fetch(getProxiedUrl(rewrittenUrl));
+    if (!res.ok) {
+      throw new Error(`Failed to download content: ${res.statusText} (Status ${res.status})`);
+    }
+    let html = await res.text();
+
+    // Strip Wayback Machine toolbar and scripts
+    html = stripWaybackToolbar(html);
+
+    return html;
+  } catch (e: any) {
+    // Fallback logic also updated to use rewrittenUrl and stripWaybackToolbar()
+    // ... (same timeout + multi-proxy pattern as CDX API)
+  }
+};
+````
+</augment_code_snippet>
+
+## The Testing
+
+**Build successful**:
+```bash
+npm run build
+# ✓ built in 2.34s
+```
+
+**User's confirmation**:
+> "that worked"
+
+**Deployment to GitHub Pages**:
+```bash
+git add -A
+git commit -m "Fix: Download Wayback-rewritten HTML to preserve resource URLs"
+git push origin main
+```
+
+**Final verification on GitHub Pages**:
+> "it works"
+
+## What This Fix Accomplished
+
+1. ✅ **Preserved URL Rewriting**: All resources (images, CSS, JS) now load from the Wayback Machine archive
+2. ✅ **Removed Toolbar**: Wayback toolbar and scripts are stripped from the HTML
+3. ✅ **No More CORS Errors**: Resources load correctly without `NS_ERROR_CORRUPTED_CONTENT`
+4. ✅ **Works on Both Localhost and GitHub Pages**: Consistent behavior across environments
+
+## The Key Insight
+
+**Wayback Machine URL Modifiers**:
+- **With `id_`**: `/web/{timestamp}id_/{url}` - Gets raw content WITHOUT URL rewriting ❌
+- **Without `id_`**: `/web/{timestamp}/{url}` - Gets Wayback-rewritten content with toolbar ✅
+
+**The Solution**: Use the rewritten version and strip the toolbar manually, rather than using `id_` which breaks resource loading.
+
+---
+
 # Epilogue: The Happy Ending
 
-The application now works on both localhost AND GitHub Pages, automatically falling back to corsproxy.io when AllOrigins times out. The system is **self-healing** and **robust** to external proxy failures.
+The application now works perfectly on both localhost AND GitHub Pages with:
+
+1. ✅ **Self-healing CDX API** - Automatically falls back to corsproxy.io when AllOrigins times out
+2. ✅ **Working preview feature** - Displays archived pages with all resources loading correctly
+3. ✅ **Robust error handling** - Comprehensive validation and fallback mechanisms
+4. ✅ **Production deployment** - Live at https://swipswaps.github.io/Archive-OmniDash-2/
 
 **User's final confirmation (chatLog line 4724)**:
 > "stop it works right now"
 
-**Console output showing the fix in action**:
+**Console output showing the CDX fix in action**:
 ```
 Direct CDX fetch blocked by CORS. Attempting automatic fallback via AllOrigins... waybackService.ts:138:17
 AllOrigins timed out or failed (The user aborted a request.), trying corsproxy.io... waybackService.ts:186:17
 ✅ CORS fallback successful via corsproxy.io waybackService.ts:195:19
 ```
 
-**Final Result**: **1,151 records** retrieved successfully, timeline chart displays correctly.
+**Final Results**:
+- **1,151 CDX records** retrieved successfully ✅
+- **Timeline chart** displays correctly ✅
+- **Preview feature** works with all resources loading from archive ✅
+- **GitHub Pages deployment** fully functional ✅
 
 **The End** 🎉

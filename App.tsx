@@ -5,6 +5,7 @@ import MetadataExplorer from './views/MetadataExplorer';
 import ScrapingBrowser from './views/ScrapingBrowser';
 import AnalyticsDashboard from './views/AnalyticsDashboard';
 import WaybackTools from './views/WaybackTools';
+import Blog from './views/Blog';
 import Settings from './views/Settings';
 import { AppView, AppSettings } from './types';
 import { DEFAULT_SETTINGS } from './constants';
@@ -65,6 +66,8 @@ const App: React.FC = () => {
         return <AnalyticsDashboard onChangeView={setCurrentView} />;
       case AppView.WAYBACK:
         return <WaybackTools settings={settings} onChangeView={setCurrentView} />;
+      case AppView.BLOG:
+        return <Blog onChangeView={setCurrentView} />;
       case AppView.SETTINGS:
         return <Settings settings={settings} onUpdate={setSettings} />;
       default:
@@ -84,6 +87,8 @@ const App: React.FC = () => {
         return 'Analytics';
       case AppView.WAYBACK:
         return 'Wayback Machine';
+      case AppView.BLOG:
+        return 'Blog';
       case AppView.SETTINGS:
         return 'Settings';
       default:

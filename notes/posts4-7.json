@@ -1,0 +1,40 @@
+{
+  "entries": [
+    {
+      "id": "cdx-incident-04",
+      "title": "The Proxy We Trusted Too Much",
+      "slug": "the-proxy-we-trusted-too-much",
+      "date": "2025-12-14",
+      "status": "published",
+      "summary": "How a third-party CORS proxy became a single point of silent failure.",
+      "content": "Once mock data was identified as the culprit, the obvious question followed: why was the app falling back in the first place?\n\nThe answer led straight to a dependency we barely thought about — a public CORS proxy.\n\nDirect calls to the Internet Archive CDX API were blocked by browser CORS rules, so the app relied on AllOrigins to relay requests. For a long time, this worked well enough to fade into the background. Until it didn’t.\n\nAt the time of failure, AllOrigins was behaving inconsistently. Some requests timed out entirely. Others returned HTTP 200 with incomplete or invalid JSON. From the browser’s perspective, the request \"succeeded.\"\n\nThe app believed it too.\n\nBecause the fetch resolved, success was logged immediately. Only afterward did JSON parsing fail — triggering a catch block that quietly returned mock data.\n\nNo error reached the UI. No warning appeared in the logs. The system degraded smoothly, invisibly, and convincingly.\n\nThis wasn’t a single bug. It was a chain of assumptions: that a proxy would be reliable, that HTTP 200 meant usable data, and that logging success early was harmless.\n\nNone of those assumptions held."
+    },
+    {
+      "id": "cdx-incident-05",
+      "title": "Timeouts, Or Why Waiting Forever Is a Bug",
+      "slug": "timeouts-or-why-waiting-forever-is-a-bug",
+      "date": "2025-12-14",
+      "status": "published",
+      "summary": "The missing timeout that let failures masquerade as success.",
+      "content": "One detail kept showing up in logs and traces: requests that never clearly failed.\n\nThe original CDX fetch logic had no timeout. If a proxy stalled, the browser would wait. If the proxy returned late with malformed data, the code would move on as if everything was fine.\n\nThis is where the fix finally became clear.\n\nThe solution wasn’t just switching proxies — it was enforcing boundaries. A request that takes too long isn’t slow; it’s failed.\n\nAbortController was added with a hard timeout. If the CDX request didn’t respond in time, it was explicitly aborted. No partial success. No ambiguous state.\n\nOnly after receiving valid JSON would the app log success. Only after validation would results reach the UI.\n\nThis changed the behavior immediately. Instead of quiet degradation, failures became visible. Instead of fake certainty, the system admitted when it didn’t know.\n\nIt was a small change in code, but a large change in philosophy: uncertainty is better than lying."
+    },
+    {
+      "id": "cdx-incident-06",
+      "title": "The Moment Real Data Came Back",
+      "slug": "the-moment-real-data-came-back",
+      "date": "2025-12-15",
+      "status": "published",
+      "summary": "What it looked like when the CDX API finally returned genuine archive data again.",
+      "content": "After adding timeouts, validation, and proxy fallback, there was only one question left: did it actually work?\n\nThe answer came not from logs or tests, but from the data itself.\n\nSearch results jumped from a perfectly round 200 entries to over a thousand. Timestamps varied naturally. Charts lost their artificial symmetry.\n\nThis time, nothing looked neat — and that was the point.\n\nThe data finally had the irregularity of reality.\n\nThis wasn’t a triumphant moment with fireworks. It was quieter than that. A recognition that the system was no longer pretending.\n\nFor the first time since the issue began, Archive-OmniDash was showing what the Internet Archive actually contained — not what the app wished it did.\n\nThat confirmation mattered more than any automated checkmark. It came from observing behavior that could no longer be faked by mock data."
+    },
+    {
+      "id": "cdx-incident-07",
+      "title": "What This Broke Changed Forever",
+      "slug": "what-this-broke-changed-forever",
+      "date": "2025-12-15",
+      "status": "published",
+      "summary": "How one quiet failure permanently changed how success is defined.",
+      "content": "This incident didn’t just fix a CDX bug. It changed how success is measured.\n\nFrom this point forward, logs stopped being trusted on their own. Screenshots stopped counting without OCR. Status indicators stopped existing without real verification behind them.\n\nGreen checkmarks became suspect. Passing tests became provisional. Anything that couldn’t be validated was treated as unknown, not assumed correct.\n\nPerhaps the most important shift was cultural: failures were no longer something to smooth over. They were surfaced deliberately, even if that made the app feel less polished in the short term.\n\nBecause a system that admits failure is easier to fix than one that hides it.\n\nArchive-OmniDash didn’t just recover from a broken API path. It learned to stop lying — to users, to tests, and to itself.\n\nThat lesson will outlast this particular bug."
+    }
+  ]
+}

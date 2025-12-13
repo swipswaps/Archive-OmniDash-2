@@ -1,0 +1,26 @@
+The UI said Authenticated.
+The credentials panel was green.
+Search results appeared instantly.
+Charts rendered smoothly.
+
+If you were skimming, you'd assume everything was wired up
+correctly.
+
+But something felt off.
+
+While testing the app, | intentionally replaced valid Internet
+Archive credentials with obvious junk — placeholder strings that
+should have failed immediately. Nothing changed. The app still
+reported that credentials were active. No warnings. No errors. Still
+green.
+
+That was the first crack.
+
+The reason became obvious once the backend response was
+inspected:
+
+ts
+// backend credential status
+
+return {
+hascredentials: !!creds

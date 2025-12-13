@@ -1,0 +1,33 @@
+05 OmniDash Blog
+
+€ Back to all posts
+
+>)
+
+Home
+
+(tt)
+
+Item Search Everything Looked Green (Until It
+Wasn't)
+
+3 December 12,2025 8 Archive-OmniDash Maintainer
+
+\ Deep Search
+
+® Wayback Machine
+LiL View Analytics At first glance, Archive-OmniDash looked healthy.
+The UI said Authenticated.
+™ Blog The credentials panel was green.
+Search results appeared instantly.
+@ Settings Charts rendered smoothly.
+. If you were skimming, you'd assume everything was wired up correctly.
+
+But something felt off.
+
+While testing the app, | intentionally replaced valid Internet Archive credentials
+with obvious junk — placeholder strings that should have failed immediately.
+
+Neathing channed The ann
+
+ranartod that cradantiale ware active Na
