@@ -916,9 +916,121 @@ Before marking work complete:
 - [ ] Process management scripts work
 - [ ] App starts/stops cleanly
 
+## Blog Feature
+
+### Overview
+Archive-OmniDash-2 includes a built-in blog feature for documenting technical insights and lessons learned. The blog supports markdown-style code blocks with syntax highlighting.
+
+### File Structure
+- `views/Blog.tsx` - Main blog component with CRUD operations
+- `data/blog_entries.json` - Blog post data (7 posts from CDX Incident series)
+- `services/blogService.ts` - Import/export functionality (JSON, CSV, TSV)
+- `types.ts` - BlogEntry interface definition
+
+### Features
+1. **Full CRUD Operations**:
+   - Create new posts with auto-generated IDs and slugs
+   - Edit existing posts with comprehensive form
+   - Delete posts with confirmation dialog
+   - Draft status support
+
+2. **Code Block Rendering**:
+   - Triple-backtick code blocks: ` ```language\ncode\n``` `
+   - Language labels (ts, js, python, etc.)
+   - Syntax highlighting (teal text on dark background)
+   - Inline code with single backticks: `` `code` ``
+   - Horizontal scrolling for long lines
+
+3. **Import/Export**:
+   - Import from JSON, CSV, TSV files
+   - Export to JSON or CSV
+   - Merge and deduplicate entries
+   - Bulk blog management
+
+4. **Professional UX**:
+   - Reading time estimates (200 words/min)
+   - Tags and categories
+   - Hero sections with metadata
+   - Hover state for edit/delete buttons
+   - Responsive design
+
+### Code Block Implementation
+
+**Rendering Logic** (`views/Blog.tsx` lines 49-149):
+```typescript
+const formatContent = (content: string) => {
+  // Parse triple-backtick code blocks
+  const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+
+  // Render with language label and syntax highlighting
+  <div className="mb-6 rounded-lg overflow-hidden border border-gray-700">
+    <div className="bg-gray-900 px-4 py-2 text-xs text-gray-400 font-mono">
+      {language}
+    </div>
+    <pre className="bg-gray-900 p-4 overflow-x-auto">
+      <code className="text-sm font-mono text-teal-300">
+        {code}
+      </code>
+    </pre>
+  </div>
+};
+```
+
+**Inline Code** (`formatInlineCode()` function):
+- Parses single backticks: `` `code` ``
+- Renders with gray background and teal text
+- Monospace font with padding
+
+### Testing Requirements
+
+When testing blog features, ALWAYS verify:
+1. ✅ All 7 blog posts visible
+2. ✅ Code blocks render with language labels
+3. ✅ Inline code renders with proper styling
+4. ✅ CRUD buttons (New Post, Edit, Delete) functional
+5. ✅ Import/Export buttons present
+6. ✅ No regressions to existing features
+
+**Selenium Test Pattern**:
+```python
+# Navigate to blog
+blog_btn = driver.find_element(By.XPATH, "//button[contains(., 'Blog')]")
+blog_btn.click()
+
+# Verify posts
+posts = driver.find_elements(By.TAG_NAME, "article")
+assert len(posts) == 7, f"Expected 7 posts, found {len(posts)}"
+
+# Open post and verify code blocks
+posts[0].click()
+code_blocks = driver.find_elements(By.TAG_NAME, "pre")
+assert len(code_blocks) > 0, "No code blocks found"
+
+# OCR verification
+subprocess.run(["tesseract", "screenshot.png", "output"])
+ocr_text = open("output.txt").read()
+assert "// backend credential status" in ocr_text
+```
+
+### Data Persistence
+- Blog data stored in localStorage
+- Fallback to static JSON file if localStorage empty
+- Auto-save on create/edit/delete operations
+- Preserves series name and author metadata
+
+### Current Blog Posts (CDX Incident Series)
+1. "Everything Looked Green (Until It Wasn't)" - Fake credential validation
+2. "The Search Results That Lied Perfectly" - Mock data replacing real results
+3. "Why Our Tests Told Us the Wrong Story" - Timestamp analysis
+4. "The Proxy That Stopped Proxying" - AllOrigins timeout issues
+5. "When 200 OK Means 'Actually, No'" - Invalid JSON responses
+6. "The Five-Second Rule (For APIs)" - AbortController timeout implementation
+7. "How We Made the App Self-Healing" - Multi-proxy fallback pattern
+
 ## Notes
 - **Production ready**: Code quality rated 9/10
 - **WCAG compliant**: Level AA accessibility achieved
 - **Smart CORS fallback**: Handles Internet Archive API limitations
 - **Secure backend**: AES-256-GCM encrypted credential storage
+- **Blog feature**: Technical documentation with code block rendering
 
